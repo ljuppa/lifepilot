@@ -55,9 +55,9 @@ development_status:
   epic-1-retrospective: optional
 
   # ── Epic 2: Life Profile & Goal Configuration ─────────────────────────────
-  epic-2: backlog
-  2-1-onboarding-wizard-profile-goals-and-consent: backlog
-  2-2-profile-and-goal-editing: backlog
+  epic-2: in-progress
+  2-1-onboarding-wizard-profile-goals-and-consent: in-progress
+  2-2-profile-and-goal-editing: ready-for-dev
   epic-2-retrospective: optional
 
   # ── Epic 3: Daily Check-In ────────────────────────────────────────────────

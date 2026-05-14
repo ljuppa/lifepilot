@@ -381,3 +381,97 @@ So that I can access my protected dashboard securely.
 **Given** my session has been inactive for 7 days
 **When** I attempt to access any protected route
 **Then** middleware detects the expired session and redirects me to `/sign-in`
+
+---
+
+## Epic 2: Life Profile & Goal Configuration
+
+Users can complete a conversational onboarding wizard — personal profile, budget, goals, briefing time, and GDPR consent — and edit any of this at any time after onboarding.
+
+### Story 2.1: Onboarding Wizard — Profile, Goals & Consent
+
+As a new user who has verified their email,
+I want to complete a conversational step-by-step wizard that collects my personal profile, budget basics, life goals, briefing time preference, and data consent,
+So that the AI coach has the context it needs to generate my first personalised briefing.
+
+**Acceptance Criteria:**
+
+**Given** I have verified my email and sign in for the first time (no profile row exists)
+**When** I land on `/dashboard`
+**Then** I am redirected to `/onboarding/step-1`; a CoachVoiceLine reads "Let's start with the basics — what should I call you?"; a "Step 1 of 3" text indicator is visible top-right; no progress bar
+
+**Given** I complete Step 1 (name, age, gender, height, weight, location) and tap "Continue"
+**When** all required fields pass Zod validation
+**Then** I advance to Step 2 (budget: monthly income, fixed expenses, discretionary budget); the "Step 2 of 3" indicator updates; tapping back returns me to Step 1 with my previous answers preserved
+
+**Given** I complete Step 2 and tap "Continue"
+**When** budget fields pass Zod validation
+**Then** I advance to Step 3 (goal selection); "Step 3 of 3" is shown; the `DomainChip` component renders three tappable domain options (Health / Finance / Wellness); I can select 1–3 domains; selecting a domain reveals a goal title input for that domain
+
+**Given** I have selected at least one domain and entered a goal title and tap "Continue"
+**When** goal fields pass Zod validation
+**Then** I advance to the briefing time screen (no step counter); a time picker defaults to 07:00 and a timezone selector defaults to my browser timezone
+
+**Given** I confirm my briefing time and tap "Continue"
+**When** I reach the consent screen
+**Then** plain prose explains what data is collected, the legal basis (GDPR Art. 6(1)(b)), the sub-processor list, and retention periods; "View Privacy Policy" links to the full policy; I must check a consent checkbox to proceed; I cannot advance without checking it
+
+**Given** I check the consent checkbox and tap "Start my journey"
+**When** the wizard completes
+**Then** a `profiles` row and one `goals` row per selected domain are inserted via `POST /api/profile` and `POST /api/goals`; an `audit_logs` row is written with `event_type: 'consent_given'`; I am redirected to `/dashboard`; the Today view shows a warm coach card (amber left border, CoachVoiceLine): "Your first briefing arrives tomorrow at [configured time]. While you wait — how are you feeling today?"
+
+**Given** the `profiles` and `goals` Supabase migrations are applied
+**When** any API route reads or writes these tables
+**Then** RLS policies enforce `user_id = auth.uid()` on all SELECT, INSERT, and UPDATE operations; no user can read another user's profile or goals
+
+**Given** a required wizard field is left empty and I attempt to advance
+**When** Zod validation runs on the server
+**Then** the field shows an inline coach-voice error (e.g. "That doesn't look right — try again?"); the step does not advance; the error is announced via `aria-live="polite"`
+
+**Given** a network error occurs during final wizard submission
+**When** the `POST /api/profile` or `POST /api/goals` request fails
+**Then** an amber banner reads "Couldn't save your profile — tap to try again."; all wizard answers are preserved in form state
+
+### Story 2.2: Profile & Goal Editing
+
+As a signed-in user who has completed onboarding,
+I want to edit my personal profile, budget details, and active goals at any time,
+So that my AI coach always reflects my current situation and priorities.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/profile`
+**When** the page loads
+**Then** a skeleton card (`animate-pulse`, `bg-[#EDE8E0]`) is shown while data fetches; once loaded, all current profile values are pre-populated in the edit form
+
+**Given** I change one or more profile fields and tap "Save"
+**When** `PATCH /api/profile` succeeds
+**Then** the field border briefly turns sage green and the label reads "Saved" for 2 seconds; no page reload; no toast notification
+
+**Given** I have made unsaved profile changes and attempt to navigate away
+**When** the navigation event fires
+**Then** a Dialog appears: "You have unsaved changes. Leave?" with "Stay" (primary) and "Leave anyway" (secondary ghost) buttons
+
+**Given** I navigate to `/goals`
+**When** the page loads
+**Then** my current active goals are listed with domain chip labels, goal titles, and Edit / Remove actions; if no goals exist, a CoachVoiceLine reads "You haven't set any goals yet. Let's start with one — what do you most want to change this month?"
+
+**Given** I tap "Add goal" and fewer than 3 active goals exist
+**When** the add goal form appears
+**Then** it shows a `DomainChip` selector and a goal title input; on save, `POST /api/goals` creates the goal and the list refreshes inline
+
+**Given** I already have 3 active goals
+**When** I view the goals page
+**Then** the "Add goal" button is disabled and a label reads "You've reached the maximum of 3 active goals"
+
+**Given** I tap "Remove" on a goal and confirm in the Dialog
+**When** `DELETE /api/goals/[id]` succeeds
+**Then** the goal is marked `status: 'inactive'` (soft-delete) and disappears from the list; the "Add goal" button re-enables
+
+**Given** I tap "Edit" on a goal
+**When** the inline edit form saves
+**Then** `PATCH /api/goals/[id]` updates the record and the form closes with a 2-second "Saved" confirmation
+
+**Given** any `/api/profile` or `/api/goals` route handler is called
+**When** the handler runs
+**Then** `createServerClient()` is called first, `supabase.auth.getUser()` is verified, and all DB queries use `user.id` — never a client-supplied `userId`; unauthenticated calls return HTTP 401: `{ "error": { "code": "UNAUTHORIZED", "message": "Not authenticated" } }`

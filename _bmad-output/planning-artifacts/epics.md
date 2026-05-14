@@ -1,0 +1,1001 @@
+---
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, step-04-final-validation]
+workflowStatus: complete
+completedAt: '2026-05-14'
+inputDocuments:
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/ux-design-specification.md
+---
+
+# LifePilot - Epic Breakdown
+
+## Overview
+
+This document provides the complete epic and story breakdown for LifePilot, decomposing the requirements from the PRD, Architecture, and UX Design Specification into implementable stories.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+**User Account & Profile Management**
+- FR1: Users can create an account using email and password
+- FR2: Users can verify their email address before accessing the app
+- FR3: Users can configure their personal profile (name, age, gender, height, weight, location)
+- FR4: Users can set a budget profile (monthly income, fixed expenses, discretionary budget)
+- FR5: Users can define 1–3 active life goals across supported domains (health, finance, mental wellness)
+- FR6: Users can edit their profile and goals at any time
+- FR7: Users can delete their account and all associated data
+
+**Daily Briefing**
+- FR8: The system generates a personalised daily briefing for each active user once per day
+- FR9: Users can view their daily briefing in the web app
+- FR10: Users receive their daily briefing via email at a user-configured time
+- FR11: Users can configure the time their daily briefing is delivered
+- FR12: The briefing includes at least one actionable suggestion per active goal domain
+- FR13: Users can mark a briefing suggestion as helpful or not helpful
+- FR14: Users can view their briefing history (last 30 days)
+
+**Manual Check-In**
+- FR15: Users can log a daily mood check-in (scale or emotion selection)
+- FR16: Users can log a health metric (e.g. weight, steps, water intake) per check-in
+- FR17: Users can log a finance metric (e.g. daily spend) per check-in
+- FR18: Users can log a wellness metric (e.g. sleep duration, stress level) per check-in
+- FR19: The system queues check-in data entered without connectivity and syncs on reconnect
+
+**Goal Progress & Insights**
+- FR20: Users can view current progress toward each active goal
+- FR21: Users can view a streak count for consecutive daily check-ins
+- FR22: The system detects when a user has not checked in for 48+ hours and sends a re-engagement nudge
+- FR23: Users can view a weekly summary of check-in data and briefing history
+
+**Notifications & Communication**
+- FR24: Users receive a re-engagement email after 48+ hours without a check-in
+- FR25: Users can configure which email notification types they receive
+- FR26: Users can unsubscribe from all non-critical emails
+
+**Privacy & Data Control**
+- FR27: Users can export all personal data in a machine-readable format
+- FR28: Users can view a summary of what data is stored about them
+- FR29: Users provide explicit consent to data processing during onboarding before any data is collected
+
+**Administration & Operations**
+- FR30: Operators can view aggregate platform metrics (DAU, briefing delivery rate, check-in rate) without accessing individual user data
+- FR31: Operators can view per-user email delivery status without accessing personal health or financial data
+- FR32: Operators can send a system-wide announcement to all users
+
+### NonFunctional Requirements
+
+**Performance**
+- NFR1: Web app Largest Contentful Paint < 3 seconds on a 4G mobile connection
+- NFR2: All user-interactive API calls respond in < 1 second at p95
+- NFR3: Daily briefing email delivered within 5 minutes of user's configured time
+- NFR4: Briefing generation pipeline completes in < 60 seconds per user
+- NFR5: App is fully usable at screen widths 375px–1440px
+
+**Security**
+- NFR6: All data in transit encrypted via TLS 1.3 minimum (Vercel-enforced)
+- NFR7: All personal data encrypted at rest in Supabase (AES-256)
+- NFR8: Supabase Row Level Security enforced at DB level — users read/write only their own records
+- NFR9: All secrets stored in Vercel environment variables — absent from source code and client bundles
+- NFR10: Auth tokens expire after 7 days of inactivity; refresh tokens rotated on each use
+- NFR11: LLM prompts contain only anonymised, session-scoped context; Anthropic training opt-out enforced
+- NFR12: All app routes require a valid authenticated session — no unauthenticated data access
+- NFR13: Application hardened against OWASP Top 10: parameterised queries, CSP headers, rate limiting on auth endpoints, structured error logging without PII exposure
+
+**Reliability**
+- NFR14: Web app and API availability ≥ 99.5% monthly (Vercel SLA)
+- NFR15: Failed briefing jobs retried up to 3 times with exponential backoff (Inngest)
+- NFR16: Email delivery failures logged; briefing remains accessible in-app regardless of email status
+- NFR17: Infrastructure errors return user-friendly messages — no raw stack traces or DB errors exposed
+
+**Scalability**
+- NFR18: Architecture scales from 0 to 1,000 active users with no infrastructure changes
+- NFR19: Claude Haiku used for all routine briefings; prompt caching reduces input token cost by ≥ 80%; hard spend alert at $10/month
+- NFR20: Supabase free tier supports ~500 users with 90 days of check-in history; one-click upgrade path to Pro
+
+**Accessibility**
+- NFR21: All core user flows (onboarding, briefing view, check-in) meet WCAG 2.1 Level AA
+- NFR22: All interactive elements keyboard-navigable
+- NFR23: Colour contrast ≥ 4.5:1 for normal text, ≥ 3:1 for large text (WCAG AA)
+- NFR24: All images and icons include descriptive alt text
+
+**DevSecOps & Maintainability**
+- NFR25: All changes merged via pull request — no direct commits to main
+- NFR26: CI pipeline (lint, type-check, tests, security scan) must pass before merge
+- NFR27: Every PR receives an automated Vercel preview deployment for visual review
+- NFR28: High/critical Dependabot vulnerabilities resolved within 7 days
+- NFR29: Production deployments zero-downtime via Vercel serverless rolling update
+- NFR30: Previous production deployment restorable in < 2 minutes via Vercel dashboard
+
+**EU & USA Regulatory Compliance**
+- NFR31: GDPR-compliant Privacy Notice displayed before account creation (GDPR Art. 13/14)
+- NFR32: Data Processing Agreements executed with all sub-processors before processing EU user data (GDPR Art. 28)
+- NFR33: Retention limits automatically enforced: check-ins deleted after 12 months, briefings after 6 months, account data within 30 days of deletion request (GDPR Art. 5(1)(e))
+- NFR34: Breach response plan documented; supervisory authority notified within 72h (GDPR Art. 33); FTC and users notified within 60 days
+- NFR35: Cookie consent banner shown to EU users before non-essential cookies; consent recorded and auditable (ePrivacy)
+- NFR36: All AI-generated content labelled as AI-generated in the UI (EU AI Act 2024)
+- NFR37: Age confirmation gate at signup — users confirm they are 18 or older (COPPA safe harbour)
+- NFR38: Commercial emails comply with CAN-SPAM: physical address included, unsubscribe honoured within 10 business days, no deceptive subject lines
+- NFR39: Payment card data never processed by LifePilot servers — delegated to Stripe (SAQ A PCI DSS)
+- NFR40: Privacy rights honoured for residents of Virginia, Colorado, Connecticut, and Texas: opt-out of data sale/sharing, access and correction rights on demand
+
+### Additional Requirements
+
+**From Architecture — Critical (block implementation):**
+- ARCH1: Project initialised using `npx create-next-app -e with-supabase lifepilot` then `npx shadcn@latest init` — this is Story 1 of Epic 1
+- ARCH2: Zod validation schemas defined in `lib/validation/` — used in both Route Handlers and react-hook-form resolvers; never inline
+- ARCH3: Supabase CLI migration workflow — `supabase migration new <name>`, SQL files committed, applied via `supabase db push` in CI
+- ARCH4: REST API with standard error format `{ error: { code, message, field } }` and success format `{ data: ... }` — no naked returns
+- ARCH5: LLM prompt structure: cached system prompt prefix (role, output format, safety rules, disclosure) + dynamic user block (profile, goals, last 7 days check-ins, today's date); Anthropic prompt caching API; Claude Haiku for MVP briefings
+
+**From Architecture — Important (shape architecture):**
+- ARCH6: Upstash rate limiting on auth endpoints — 5 requests per 15 minutes per IP (`@upstash/ratelimit` + Upstash Redis free tier)
+- ARCH7: RSC for initial data loads; SWR for polling and revalidation (briefing status, streak); SWR key convention `['/api/{resource}', userId]`
+- ARCH8: react-hook-form + Zod resolvers on all forms — client validation mirrors server validation
+- ARCH9: AiDisclosureWrapper shared component mandatory on every surface rendering LLM content — non-dismissible footer: "✦ AI-generated — not medical, nutritional, or financial advice."
+- ARCH10: Inngest nightly retention job — deletes check-ins older than 12 months, briefings older than 6 months (GDPR Art. 5)
+- ARCH11: Audit log table (`audit_logs`) — append-only, indexed on `user_id` and `event_type`; records consent events, data exports, account deletions, admin actions; no PII in log message fields
+- ARCH12: Unsubscribe token signing — HMAC-SHA256 with `UNSUBSCRIBE_SECRET` env var; token = `HMAC(userId + email)`, embedded in email templates; unsubscribe endpoint is unauthenticated by design
+- ARCH13: Supabase Storage `exports` bucket — private (no public access); only signed URLs (1-hour expiry); RLS policy: SELECT where `user_id = auth.uid()`
+- ARCH14: GitHub Actions CI/CD pipeline — lint → type-check → Vitest → npm audit → Snyk → Vercel Preview Deploy per PR → merge to main → Vercel Production Deploy
+- ARCH15: Cookie consent (`react-cookie-consent`) geo-targeted to EU users via Vercel Edge headers; consent recorded in audit_logs
+- ARCH16: LLM safety filter (`lib/claude/safety.ts`) — server-side pattern filter on all LLM output before storage or delivery; blocks: caloric thresholds below 1200, "stop eating" language, specific investment recommendations, harmful content; single-pass string filter
+- ARCH17: Monitoring — Vercel Analytics (web vitals), Inngest dashboard (job observability), structured `console.log` JSON (no PII), Supabase dashboard (DB metrics)
+- ARCH18: Data export flow — Inngest job generates JSON → stores in Supabase Storage (signed URL, 1h expiry) → emails download link via Resend
+
+### UX Design Requirements
+
+**Design Tokens & Visual System**
+- UX-DR1: Implement CSS custom property design token system in `globals.css` — warm off-white background (#FAF9F6), muted sage primary (#46876A), warm amber accent (#E8923A), coach-observation surface (#EDE8E0), deep charcoal foreground (#2D3142); all WCAG 2.1 AA contrast ratios verified; semantic rules enforced (accent max 2 elements/screen, coach-observation surface on coach messages only, destructive never in coaching flows)
+- UX-DR2: Configure dual-font typography system — Inter (variable) for all UI chrome; Lora (variable, serif) for briefing prose, coach's observations, and "Your Journey" chapters; body-lg 18px / 1.7 line-height for briefing content; max line length 65 characters; coach voice copy always body-lg minimum, never bold for emphasis
+- UX-DR3: Implement mobile-first responsive layout — 680px max-width for briefing/check-in; 960px for dashboard; 1200px for admin; bottom tab bar (Today / Goals / History / Settings) on mobile (<768px); top nav with horizontal links on desktop (≥1024px); two-column goal grid at md breakpoint
+
+**Email Templates**
+- UX-DR4: Build plain HTML email templates with inline CSS matching web token colours — Lora for opening prose, system sans-serif for metadata; consistent subject line format "Your [Day] — [one-line focus preview]"; 180–250 word body maximum; single prominent CTA button; coach sign-off "That's your [Day], [Name]. Make it count."; plain-text alternative on every send; 600px max-width, single column, no images in MVP
+
+**Custom Components — Tier 1 (blocking — core loop)**
+- UX-DR5: Build `BriefingCard` custom component — domain badge (health sage / finance amber / wellness slate), Lora serif coach prose body (40–80 words, no bullet lists), optional inline action link, "Was this helpful?" thumb icons on hover/focus; variants: greeting / suggestion / observation; `role="article"`, aria-label; states: default / expanded / dismissed / marked helpful / marked not helpful
+- UX-DR6: Build `MoodSelector` custom component — five 44×44px circular touch targets in horizontal row, amber-to-sage colour scale, filled + scale(1.15) selected state; `role="radiogroup"`, `aria-label="How are you feeling today?"`, each dot `role="radio"` labelled "Mood [n] of 5", arrow key navigation
+- UX-DR7: Build `DomainChip` custom component — pill shape 32px height, icon (16px) + label (Inter 13px medium); variants by domain: health (leaf, sage), finance (coins, amber), wellness (lotus, slate); modes: selector (`role="checkbox"`, `aria-checked`, space/enter toggle) and display (read-only); states: unselected / selected / disabled
+- UX-DR8: Build `CoachVoiceLine` custom component — Lora italic 18px, coach acknowledgement text, variants: opening / closing / empty; one per screen, always first element; never stack two; used at all significant transitions (check-in open, empty states, confirmation closes)
+
+**Custom Components — Tier 2 (coaching relationship & retention)**
+- UX-DR9: Build `CoachesObservation` custom component — warm grey surface (#EDE8E0), 4px amber left border, Lora italic 15px body; "Coach's Observation" label (Inter 11px uppercase amber); one open question, no CTA, no feedback icons; `role="note"`, `aria-label="Coach's Observation"`; rendered at most once per week, distinct from briefing cards
+- UX-DR10: Build `StreakBadge` custom component — Lucide flame icon (16px amber) + streak count + "day streak" label; amber bg-amber-50 border-amber-200 rounded-full; zero state greyed "Start your streak"; milestone pulse animation (7/30/100 days) respecting `prefers-reduced-motion`; `aria-label="[n] day streak"`
+
+**Onboarding Flow UX**
+- UX-DR11: Implement conversational single-question-per-screen onboarding wizard — Step 1: name/age/location; Step 2: budget basics; Step 3: goal domain chip selection (1–3); Step 4: briefing time preference (default 07:00, timezone); Step 5: consent screen (GDPR/CCPA/AI disclaimer, plain prose with key points bulleted); warm coach empty state card (amber border, CoachVoiceLine) on wizard completion — "Your first briefing arrives tomorrow at 07:00"; "Step N of 3" text indicator, no progress bar overload
+
+**Check-In Flow UX**
+- UX-DR12: Implement check-in flow as full-screen Sheet on mobile / centred card on desktop — single screen no pagination; CoachVoiceLine opening acknowledging yesterday's suggestion → MoodSelector → domain metric inputs (Slider for continuous, Input[type="number"] for discrete, shown only for active goal domains) → optional 80-char free text (skippable) → "Got it — I'll adjust tomorrow's briefing" closing CoachVoiceLine; 90-second completion target; no streak surface or score on submission; offline queue: check-in data synced on reconnect
+
+**Feedback & Interaction Patterns**
+- UX-DR13: Implement coach-voice feedback patterns — check-in submission: CoachVoiceLine (closing variant) full-screen confirmation before nav back, appears in < 500ms; profile save: inline 2s "Saved" field confirmation (silent, no toast); validation error: inline field error with coach-voice message ("That doesn't look like a number — try again?") via aria-describedby; network error: amber top banner with retry CTA ("Couldn't save that — tap to try again."); destructive: Dialog with exact action label ("Delete my account permanently"); no toast notifications; no confetti; no celebration animations beyond StreakBadge milestone pulse
+
+**Empty States & Loading**
+- UX-DR14: Implement coach-voice empty states for all screens — Today view: "Your first briefing arrives tomorrow at 07:00. While you wait — how are you feeling today?"; History: "Your briefing history will appear here. Check back after your first week."; Goals: "You haven't set any goals yet. Let's start with one — what do you most want to change this month?"; never blank screen or generic system message
+- UX-DR15: Implement skeleton loading screens — shape matches card exactly; `bg-[#EDE8E0]` animated shimmer (animate-pulse); delay skeleton 300ms (no flash for fast loads); `aria-busy="true"` on containers; spinner on primary button during submission, label changes to "[Action]ing…"; check-in confirmation: form disappears and CoachVoiceLine appears < 500ms
+
+**Compliance & Accessibility Components**
+- UX-DR16: Build `AiDisclosureWrapper` shared component — non-dismissible footer on all LLM content surfaces, muted styling, coach-voice copy "✦ AI-generated — not medical, nutritional, or financial advice."; mandatory wrapper on BriefingCard and all coach content; EU AI Act compliance; applied as shared component wrapper, never ad-hoc
+- UX-DR17: Implement comprehensive accessibility — skip link (first in DOM, visible on focus, `href="#main-content"`); visible focus ring (`--ring` token, 2px offset, never suppressed without replacement); `<label htmlFor>` explicitly linked to every `<input id>`; form errors via `aria-describedby` + `aria-live="polite"`; check-in confirmation via `aria-live="assertive"`; `@media (prefers-reduced-motion)` gates all transitions; colour always paired with icon/text, never alone; email: 16px min font, `role="presentation"` on layout tables, plain-text alternative on every send
+
+**Navigation & Deep Links**
+- UX-DR18: Implement email deep link routing — `/today` (Today view pre-scrolled to briefing), `/checkin` (Check-in Sheet opens directly), `/goals` (Goals view); unauthenticated deep links redirect to sign-in then back to intended route; all deep links from email use pre-authenticated magic link (no "log in first" friction)
+
+**Re-Engagement Email**
+- UX-DR19: Implement re-engagement email with coach-voice copy — subject "[First name], still here for you"; body: one empathy sentence + specific goal mention + single CTA "Update my goals"; plain-text alternative required; 48h inactivity trigger via Inngest; no further automated contact for 7 days if email unopened; no streak shaming; framed as curiosity not failure ("No pressure — just checking in. Still working toward better sleep?")
+
+**CookieConsentBanner**
+- UX-DR20: Implement CookieConsentBanner (`react-cookie-consent`) in root `app/layout.tsx` — geo-targeted to EU users via Vercel Edge headers; session cookies only in MVP; consent recorded in `audit_logs` table with `event_type: 'cookie_consent'`; banner appears before any non-essential cookies are set; consent auditable for GDPR ePrivacy compliance
+
+### FR Coverage Map
+
+| FR | Epic | Description |
+|---|---|---|
+| FR1 | Epic 1 | Email/password account creation |
+| FR2 | Epic 1 | Email verification before app access |
+| FR3 | Epic 2 | Personal profile configuration |
+| FR4 | Epic 2 | Budget profile configuration |
+| FR5 | Epic 2 | Define 1–3 active life goals |
+| FR6 | Epic 2 | Edit profile and goals at any time |
+| FR7 | Epic 6 | Delete account and all data |
+| FR8 | Epic 4 | Generate personalised daily briefing |
+| FR9 | Epic 4 | View briefing in web app |
+| FR10 | Epic 4 | Receive briefing via email at configured time |
+| FR11 | Epic 4 | Configure briefing delivery time |
+| FR12 | Epic 4 | Briefing includes suggestion per active domain |
+| FR13 | Epic 4 | Mark briefing suggestion helpful/not helpful |
+| FR14 | Epic 4 | View briefing history (30 days) |
+| FR15 | Epic 3 | Log daily mood check-in |
+| FR16 | Epic 3 | Log health metric per check-in |
+| FR17 | Epic 3 | Log finance metric per check-in |
+| FR18 | Epic 3 | Log wellness metric per check-in |
+| FR19 | Epic 3 | Offline check-in queue + sync |
+| FR20 | Epic 5 | View progress toward each active goal |
+| FR21 | Epic 5 | View consecutive check-in streak |
+| FR22 | Epic 5 | Detect 48h inactivity and send nudge |
+| FR23 | Epic 5 | View weekly summary of check-ins and briefings |
+| FR24 | Epic 5 | Re-engagement email after 48h without check-in |
+| FR25 | Epic 5 | Configure email notification preferences |
+| FR26 | Epic 5 | Unsubscribe from non-critical emails |
+| FR27 | Epic 6 | Export all personal data |
+| FR28 | Epic 6 | View data summary |
+| FR29 | Epic 2 | Explicit consent during onboarding |
+| FR30 | Epic 7 | Operator aggregate platform metrics |
+| FR31 | Epic 7 | Operator per-user email delivery status |
+| FR32 | Epic 7 | Operator system-wide broadcast |
+
+## Epic List
+
+### Epic 1: Foundation & Authenticated Access
+Users can create an account, verify their email, and sign in securely to a deployed web app. This epic produces the working Next.js scaffold, database schema, CI/CD pipeline, design token system, and auth flow that all subsequent epics depend on.
+
+**FRs covered:** FR1, FR2
+**ARCH covered:** ARCH1, ARCH2, ARCH3, ARCH4, ARCH6, ARCH14
+**UX covered:** UX-DR1, UX-DR2, UX-DR3, UX-DR17, UX-DR20
+
+### Epic 2: Life Profile & Goal Configuration
+Users can complete a conversational onboarding wizard — entering their personal profile, budget basics, and 1–3 life goals across health, finance, and wellness — and edit any of this at any time. Users provide explicit data consent during onboarding.
+
+**FRs covered:** FR3, FR4, FR5, FR6, FR29
+**ARCH covered:** ARCH8
+**UX covered:** UX-DR7, UX-DR8, UX-DR11, UX-DR13, UX-DR14, UX-DR15
+
+### Epic 3: Daily Check-In
+Users can log a daily check-in — mood, one health metric, one finance metric, one wellness metric — in under 90 seconds, with offline support that syncs on reconnect.
+
+**FRs covered:** FR15, FR16, FR17, FR18, FR19
+**UX covered:** UX-DR6, UX-DR12
+
+### Epic 4: Daily Briefing Engine
+Users receive a personalised AI-generated daily briefing via email at their configured time, can view it in the web app, mark suggestions as helpful/not helpful, and browse their 30-day briefing history. The AI pipeline uses Claude Haiku with prompt caching, a safety filter, and mandatory AI disclosure.
+
+**FRs covered:** FR8, FR9, FR10, FR11, FR12, FR13, FR14
+**ARCH covered:** ARCH5, ARCH9, ARCH16, ARCH17
+**UX covered:** UX-DR4, UX-DR5, UX-DR9, UX-DR16
+
+### Epic 5: Goal Progress, Insights & Re-engagement
+Users can track progress toward each active goal, see their check-in streak, view a weekly summary, and receive a gentle coach-voice nudge after 48h inactivity. Users control which notification types they receive and can unsubscribe from non-critical emails.
+
+**FRs covered:** FR20, FR21, FR22, FR23, FR24, FR25, FR26
+**ARCH covered:** ARCH12
+**UX covered:** UX-DR10, UX-DR18, UX-DR19
+
+### Epic 6: Privacy, Data Control & Compliance
+Users can export all their data, view a data summary, and delete their account with all associated data. The platform automatically enforces GDPR retention limits and maintains an append-only audit log.
+
+**FRs covered:** FR7, FR27, FR28
+**ARCH covered:** ARCH10, ARCH11, ARCH13, ARCH15, ARCH18
+
+### Epic 7: Administration & Operations
+Operators can view aggregate platform health metrics, look up per-user email delivery status, and send system-wide announcements — without accessing any personal health or financial data.
+
+**FRs covered:** FR30, FR31, FR32
+
+---
+
+## Epic 1: Foundation & Authenticated Access
+
+Users can create an account, verify their email, and sign in securely to a deployed web app. The working Next.js scaffold, CI/CD pipeline, design token system, and auth flow are in place for all subsequent epics to build on.
+
+### Story 1.1: Project Scaffold & Deployment Foundation
+
+As a developer,
+I want the project initialized, CI/CD configured, and a hello-world app deployed to Vercel with design tokens and accessibility baseline in place,
+So that all subsequent feature stories have a stable, testable, deployable foundation to build on.
+
+**Acceptance Criteria:**
+
+**Given** the project does not yet exist
+**When** `npx create-next-app -e with-supabase lifepilot` and `npx shadcn@latest init` are run
+**Then** the project builds without errors (`next build` exits 0) and `tsc --noEmit`, `eslint .`, and `vitest run` all pass
+
+**Given** the project is created
+**When** `globals.css` is updated with design tokens
+**Then** CSS custom properties include `--background: 40 30% 98%`, `--foreground: 220 15% 20%`, `--primary: 152 35% 42%`, `--accent: 35 80% 58%`, `--coach-observation: 40 25% 92%`, `--radius: 0.75rem`; Inter and Lora are loaded via `next/font` and applied per the typography spec
+
+**Given** the repo is on GitHub
+**When** a PR is opened to `main`
+**Then** `.github/workflows/ci.yml` runs: lint → type-check → `vitest run` → `npm audit --audit-level=high` → Snyk scan; all steps must pass before merge is unblocked; Vercel creates a preview deployment and posts its URL to the PR
+
+**Given** any page loads
+**When** a keyboard user tabs into the page
+**Then** a skip link `<a href="#main-content">Skip to content</a>` is the first focusable element in the DOM and becomes visible on focus
+
+**Given** a user visits from an EU country (detected via `x-vercel-ip-country` header)
+**When** the root layout renders
+**Then** `CookieConsentBanner` (react-cookie-consent) is displayed before any non-essential cookies are set; on acceptance, an `audit_logs` row is inserted with `event_type: 'cookie_consent'` and `user_id: null`; the `audit_logs` migration creates the table as append-only, indexed on `(user_id, event_type)`
+
+**Given** `.env.example` is committed
+**When** a developer clones the repo
+**Then** all required environment variable keys are present with placeholder values; `.env.local` is listed in `.gitignore`; no real secrets appear in any committed file
+
+### Story 1.2: User Sign-Up with Email & Password
+
+As a new user,
+I want to create an account with my email and password,
+So that I have a personal, secure account to begin configuring my life profile.
+
+**Acceptance Criteria:**
+
+**Given** I visit `/sign-up`
+**When** I submit a valid email and a password of 8+ characters with the age confirmation checkbox checked
+**Then** Supabase Auth creates my user record, a verification email is dispatched, and I see a "Check your inbox" screen displaying the email address I registered with
+
+**Given** I submit an email that is already registered
+**When** the server responds
+**Then** an inline field error reads "An account with this email already exists — try signing in." No raw Supabase error is exposed
+
+**Given** I enter a password shorter than 8 characters
+**When** I move focus away from the password field
+**Then** react-hook-form/Zod validation displays "Password must be at least 8 characters" beneath the field before I submit
+
+**Given** I have not checked the age confirmation checkbox
+**When** I attempt to submit the form
+**Then** the form cannot be submitted and a validation message reads "Please confirm you are 18 or older"
+
+**Given** the same IP submits more than 5 sign-up requests within 15 minutes
+**When** the 6th request arrives
+**Then** the server returns HTTP 429: `{ "error": { "code": "RATE_LIMITED", "message": "Too many sign-up attempts — please wait 15 minutes." } }`
+
+**Given** a network error occurs during form submission
+**When** the request fails
+**Then** an amber banner reads "Couldn't create your account — tap to try again." and the form retains the user's input
+
+### Story 1.3: Email Verification & Authenticated Sign-In
+
+As a registered user,
+I want to verify my email and sign in to the app,
+So that I can access my protected dashboard securely.
+
+**Acceptance Criteria:**
+
+**Given** I clicked the verification link in my signup email
+**When** `GET /auth/callback` processes the token
+**Then** Supabase Auth exchanges it for a session, a secure `httpOnly` session cookie is set (SameSite=Lax), and I am redirected to `/dashboard`
+
+**Given** I click a verification link older than 24 hours
+**When** the callback route processes it
+**Then** I see "That link has expired — we've sent you a new one." and a fresh verification email is dispatched automatically
+
+**Given** I visit `/sign-in` with a verified account
+**When** I submit correct email and password
+**Then** my session cookie is set and I am redirected to `/dashboard`; the password is never logged or exposed in error responses
+
+**Given** I submit incorrect credentials
+**When** the server responds
+**Then** the error reads "Email or password is incorrect." — no indication of which field is wrong; the password field is cleared; the email field retains my input
+
+**Given** the sign-in endpoint receives 5+ failed attempts from the same IP within 15 minutes
+**When** the 6th attempt arrives
+**Then** the server returns HTTP 429: `{ "error": { "code": "RATE_LIMITED", "message": "Too many sign-in attempts — please wait 15 minutes." } }`
+
+**Given** I am not signed in
+**When** I navigate to any protected route (`/dashboard`, `/checkin`, `/goals`, `/profile`, `/settings`, `/data`)
+**Then** Next.js middleware redirects me to `/sign-in?redirect=[original-path]`; after successful sign-in I am redirected back to my original destination
+
+**Given** I am signed in and click "Sign out"
+**When** the sign-out action completes
+**Then** the session cookie is invalidated server-side, I am redirected to `/sign-in`, and navigating to a protected route redirects me to `/sign-in` again
+
+**Given** my session has been inactive for 7 days
+**When** I attempt to access any protected route
+**Then** middleware detects the expired session and redirects me to `/sign-in`
+
+---
+
+## Epic 2: Life Profile & Goal Configuration
+
+Users can complete a conversational onboarding wizard — personal profile, budget, goals, briefing time, and GDPR consent — and edit any of this at any time after onboarding.
+
+### Story 2.1: Onboarding Wizard — Profile, Goals & Consent
+
+As a new user who has verified their email,
+I want to complete a conversational step-by-step wizard that collects my personal profile, budget basics, life goals, briefing time preference, and data consent,
+So that the AI coach has the context it needs to generate my first personalised briefing.
+
+**Acceptance Criteria:**
+
+**Given** I have verified my email and sign in for the first time (no profile row exists)
+**When** I land on `/dashboard`
+**Then** I am redirected to `/onboarding/step-1`; a CoachVoiceLine reads "Let's start with the basics — what should I call you?"; a "Step 1 of 3" text indicator is visible top-right; no progress bar
+
+**Given** I complete Step 1 (name, age, gender, height, weight, location) and tap "Continue"
+**When** all required fields pass Zod validation
+**Then** I advance to Step 2 (budget: monthly income, fixed expenses, discretionary budget); the "Step 2 of 3" indicator updates; tapping back returns me to Step 1 with my previous answers preserved
+
+**Given** I complete Step 2 and tap "Continue"
+**When** budget fields pass Zod validation
+**Then** I advance to Step 3 (goal selection); "Step 3 of 3" is shown; the `DomainChip` component renders three tappable domain options (Health / Finance / Wellness); I can select 1–3 domains; selecting a domain reveals a goal title input for that domain
+
+**Given** I have selected at least one domain and entered a goal title and tap "Continue"
+**When** goal fields pass Zod validation
+**Then** I advance to the briefing time screen (no step counter); a time picker defaults to 07:00 and a timezone selector defaults to my browser timezone
+
+**Given** I confirm my briefing time and tap "Continue"
+**When** I reach the consent screen
+**Then** plain prose explains what data is collected, the legal basis (GDPR Art. 6(1)(b)), the sub-processor list, and retention periods; "View Privacy Policy" links to the full policy; I must check a consent checkbox to proceed; I cannot advance without checking it
+
+**Given** I check the consent checkbox and tap "Start my journey"
+**When** the wizard completes
+**Then** a `profiles` row and one `goals` row per selected domain are inserted via `POST /api/profile` and `POST /api/goals`; an `audit_logs` row is written with `event_type: 'consent_given'`; I am redirected to `/dashboard`; the Today view shows a warm coach card (amber left border, CoachVoiceLine): "Your first briefing arrives tomorrow at [configured time]. While you wait — how are you feeling today?"
+
+**Given** the `profiles` and `goals` Supabase migrations are applied
+**When** any API route reads or writes these tables
+**Then** RLS policies enforce `user_id = auth.uid()` on all SELECT, INSERT, and UPDATE operations; no user can read another user's profile or goals
+
+**Given** a required wizard field is left empty and I attempt to advance
+**When** Zod validation runs on the server
+**Then** the field shows an inline coach-voice error (e.g. "That doesn't look right — try again?"); the step does not advance; the error is announced via `aria-live="polite"`
+
+**Given** a network error occurs during final wizard submission
+**When** the `POST /api/profile` or `POST /api/goals` request fails
+**Then** an amber banner reads "Couldn't save your profile — tap to try again."; all wizard answers are preserved in form state
+
+### Story 2.2: Profile & Goal Editing
+
+As a signed-in user who has completed onboarding,
+I want to edit my personal profile, budget details, and active goals at any time,
+So that my AI coach always reflects my current situation and priorities.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/profile`
+**When** the page loads
+**Then** a skeleton card (`animate-pulse`, `bg-[#EDE8E0]`) is shown while data fetches; once loaded, all current profile values are pre-populated in the edit form
+
+**Given** I change one or more profile fields and tap "Save"
+**When** `PATCH /api/profile` succeeds
+**Then** the field border briefly turns sage green and the label reads "Saved" for 2 seconds; no page reload; no toast notification
+
+**Given** I have made unsaved profile changes and attempt to navigate away
+**When** the navigation event fires
+**Then** a Dialog appears: "You have unsaved changes. Leave?" with "Stay" (primary) and "Leave anyway" (secondary ghost) buttons
+
+**Given** I navigate to `/goals`
+**When** the page loads
+**Then** my current active goals are listed with domain chip labels, goal titles, and Edit / Remove actions; if no goals exist, a CoachVoiceLine reads "You haven't set any goals yet. Let's start with one — what do you most want to change this month?"
+
+**Given** I tap "Add goal" and fewer than 3 active goals exist
+**When** the add goal form appears
+**Then** it shows a `DomainChip` selector and a goal title input; on save, `POST /api/goals` creates the goal and the list refreshes inline
+
+**Given** I already have 3 active goals
+**When** I view the goals page
+**Then** the "Add goal" button is disabled and a label reads "You've reached the maximum of 3 active goals"
+
+**Given** I tap "Remove" on a goal and confirm in the Dialog
+**When** `DELETE /api/goals/[id]` succeeds
+**Then** the goal is marked `status: 'inactive'` (soft-delete) and disappears from the list; the "Add goal" button re-enables
+
+**Given** I tap "Edit" on a goal
+**When** the inline edit form saves
+**Then** `PATCH /api/goals/[id]` updates the record and the form closes with a 2-second "Saved" confirmation
+
+**Given** any `/api/profile` or `/api/goals` route handler is called
+**When** the handler runs
+**Then** `createServerClient()` is called first, `supabase.auth.getUser()` is verified, and all DB queries use `user.id` — never a client-supplied `userId`; unauthenticated calls return HTTP 401: `{ "error": { "code": "UNAUTHORIZED", "message": "Not authenticated" } }`
+
+---
+
+## Epic 3: Daily Check-In
+
+Users can log a daily check-in — mood, one health metric, one finance metric, one wellness metric — in under 90 seconds, with offline support that syncs on reconnect.
+
+### Story 3.1: Daily Check-In Form
+
+As a signed-in user,
+I want to log my daily mood, health metric, finance metric, and wellness metric in a single scrollable screen that takes under 90 seconds,
+So that my AI coach has up-to-date data to personalise tomorrow's briefing.
+
+**Acceptance Criteria:**
+
+**Given** I tap the Check-in tab or "Log today's check-in" CTA from the Today view
+**When** the check-in opens
+**Then** on mobile it slides up as a full-screen bottom Sheet; on desktop it opens as a centred card; a `CoachVoiceLine` reads "How's it going today, [name]?" as the first element
+
+**Given** the check-in is open
+**When** the `MoodSelector` renders
+**Then** five 44×44px circular touch targets appear in a horizontal row with an amber-to-sage colour scale; selecting one fills the circle and scales it to 1.15×; `role="radiogroup"` with `aria-label="How are you feeling today?"`; each dot labelled "Mood [n] of 5"; arrow key navigation works
+
+**Given** I have 1–3 active goals
+**When** the domain metric section renders
+**Then** only metrics matching my active goal domains appear — health: `Slider` (value in kg with live label above thumb), finance: `Input[type="number"]` (daily spend with currency unit inline), wellness: `Slider` (sleep hours 0–12); each group has a "Skip" ghost button; units shown inline, never in placeholder text
+
+**Given** I fill in metrics and reach the optional note field
+**When** I type
+**Then** the field accepts up to 80 characters; a character count "(x/80)" is shown; tapping "Skip" submits without the note
+
+**Given** I tap "Complete check-in"
+**When** `POST /api/checkin` succeeds
+**Then** a `checkins` row is inserted with `user_id`, `mood`, domain metric values, optional note, and `checked_in_at` (ISO timestamp); the Sheet closes; a `CoachVoiceLine` closing variant reads "Got it — I'll adjust tomorrow's briefing." for 2 seconds then returns to the Today view; no streak counter, no score, no confetti
+
+**Given** I have already submitted a check-in today (same calendar day in my timezone)
+**When** I open the check-in
+**Then** a CoachVoiceLine reads "You've already checked in today — see you tomorrow!" with the time of my last check-in
+
+**Given** the `checkins` Supabase migration is applied
+**When** any route reads or writes the `checkins` table
+**Then** RLS enforces `user_id = auth.uid()` on all operations; `CheckinSchema` Zod in `lib/validation/checkin.ts` validates the request body before any DB call
+
+**Given** the submit button is tapped
+**When** the request is in flight
+**Then** the button shows a spinner and label changes to "Saving…"; the button is disabled to prevent double-submission
+
+### Story 3.2: Offline Check-In Queue & Sync
+
+As a signed-in user with intermittent connectivity,
+I want my completed check-in saved locally when I'm offline and synced automatically when I reconnect,
+So that I never lose check-in data due to a temporary network outage.
+
+**Acceptance Criteria:**
+
+**Given** I submit the check-in form
+**When** `navigator.onLine === false` or the `POST /api/checkin` request fails with no HTTP response
+**Then** the check-in data is serialised to `localStorage` under key `lifepilot_checkin_queue` as a JSON array; an amber banner reads "Saved offline — will sync when you're back online"
+
+**Given** a check-in is queued in `localStorage`
+**When** the `window online` event fires
+**Then** the app automatically retries `POST /api/checkin` for each queued item in order; on each success the item is removed from the queue
+
+**Given** a queued check-in syncs successfully
+**When** the sync completes
+**Then** the amber banner updates to "Check-in synced!" for 2 seconds then dismisses
+
+**Given** a queued check-in fails to sync after 3 retry attempts (exponential backoff: 2s, 4s, 8s)
+**When** all retries are exhausted
+**Then** the item remains in the queue and a persistent amber banner reads "Check-in couldn't sync — tap to retry" with a manual "Retry" button
+
+**Given** the user opens the check-in form while an unsynced queued item exists
+**When** the form opens
+**Then** a CoachVoiceLine reads "You have a check-in from [time] waiting to sync — sync it now or replace it?"; two buttons appear: "Sync now" (primary) and "Replace" (secondary ghost, discards queued item and opens a fresh form)
+
+**Given** a queued item is older than 24 hours (date mismatch — cannot post as today's check-in)
+**When** sync is attempted
+**Then** the server rejects it with HTTP 422; the item is removed from the queue silently (the data is stale and unrecoverable)
+
+---
+
+## Epic 4: Daily Briefing Engine
+
+Users receive a personalised AI-generated daily briefing via email at their configured time, can view it as a card stack in the web app, mark suggestions as helpful/not helpful, and browse their 30-day briefing history.
+
+### Story 4.1: Briefing Generation & Email Delivery Pipeline
+
+As an active user with a configured profile and goals,
+I want to receive a personalised AI-generated daily briefing via email at my configured time,
+So that I start each day with specific, actionable guidance without having to open any app.
+
+**Acceptance Criteria:**
+
+**Given** a user's configured `briefing_time` is reached (in their timezone)
+**When** the Inngest cron fires
+**Then** a `briefing/generate.requested` event is emitted with `{ userId, triggeredAt }` and the `generateBriefing` function begins execution
+
+**Given** the function is running
+**When** it fetches context
+**Then** it retrieves user profile + active goals + last 7 days of `checkins` rows via `createServerClient()` using the stored `user_id` — no client-supplied identity
+
+**Given** context is fetched
+**When** `buildBriefingPrompt()` in `lib/claude/prompts.ts` assembles the request
+**Then** the system prompt prefix (role, JSON output format, safety rules, AI disclosure) is sent with Anthropic prompt caching headers; the dynamic user block contains profile snapshot, active goals, last 7 check-ins, today's date and day of week; target ≥ 80% input token cost reduction on cached portion
+
+**Given** the prompt is assembled
+**When** Claude Haiku is called via `lib/claude/client.ts`
+**Then** the response is structured JSON with one suggestion object per active goal domain; the Claude Haiku model ID is hardcoded (not Sonnet); LLM spend alert is set at $10/month in the Anthropic console
+
+**Given** the LLM returns a response
+**When** `filterLlmOutput()` in `lib/claude/safety.ts` runs
+**Then** it blocks caloric thresholds below 1,200, "stop eating" language, specific investment recommendations, and harmful content patterns via a single-pass string filter; if triggered, content is replaced with a safe fallback and `safety_filter_triggered: true` is set on the briefing record; no secondary LLM call is made
+
+**Given** the briefing content passes or is filtered
+**When** the briefing is stored
+**Then** a `briefings` row is inserted with `user_id`, `content` (JSON), `briefing_date`, `email_status: 'pending'`, and `safety_filter_triggered`; RLS enforces `user_id = auth.uid()` on all SELECT operations
+
+**Given** the briefing is stored
+**When** the email is built via `lib/email/templates/briefing.ts`
+**Then** it is plain HTML with inline CSS; subject line format is "Your [Weekday] — [one-line focus preview]"; opening is a personalised prose paragraph (Lora font); body contains one suggestion per active goal domain; a single CTA button "Log today's check-in" deep-links to `/checkin`; sign-off reads "That's your [Weekday], [Name]. Make it count."; footer includes "✦ AI-generated — not medical, nutritional, or financial advice."; a plain-text alternative is included on every send
+
+**Given** the email is sent via `lib/email/resend.ts`
+**When** Resend confirms delivery
+**Then** `email_status` is updated to `'delivered'`; the briefing remains readable in-app regardless of email status
+
+**Given** Resend returns an error
+**When** delivery fails
+**Then** `email_status` is updated to `'failed'`; the failure is logged as structured JSON with `{ userId, event: 'email_delivery_failed', code }` — no email address or content in log fields
+
+**Given** the Inngest function fails at any step
+**When** the failure occurs
+**Then** Inngest retries up to 3 times with exponential backoff; after all retries exhausted the job is marked failed in the Inngest dashboard; any already-stored briefing record remains accessible in-app
+
+**Given** `POST /api/inngest` receives a webhook event
+**When** the request arrives
+**Then** the Inngest signing key is verified before any handler runs; the route is the single entry point for all background jobs
+
+### Story 4.2: Today View & Briefing Display
+
+As a signed-in user,
+I want to view today's AI-generated briefing in the web app as a card stack,
+So that I can read and act on my daily coaching content even if I don't open my email.
+
+**Acceptance Criteria:**
+
+**Given** I am signed in and have completed onboarding
+**When** I land on `/dashboard`
+**Then** today's briefing card stack is the primary content — not a metrics dashboard; the route is a React Server Component that fetches the briefing server-side (LCP target < 3s)
+
+**Given** today's briefing exists
+**When** the briefing renders
+**Then** a `BriefingCard` greeting variant appears first (Lora serif, coach voice opening, no domain badge); one `BriefingCard` suggestion variant follows per active goal domain (domain badge colour-coded: health sage / finance amber / wellness slate; Lora prose body 40–80 words; optional inline action link); all `BriefingCard` components are wrapped in `AiDisclosureWrapper` rendering a non-dismissible footer "✦ AI-generated — not medical, nutritional, or financial advice."
+
+**Given** the weekly `CoachesObservation` is due (at most once per 7 days, never on Monday morning)
+**When** the Today view renders
+**Then** a `CoachesObservation` card appears below suggestion cards — `bg-[#EDE8E0]` surface, 4px amber left border, Lora italic body, "Coach's Observation" label (Inter 11px uppercase amber), one open question, no CTA, no feedback icons; `role="note"`, `aria-label="Coach's Observation"`
+
+**Given** today's briefing does not yet exist
+**When** the Today view renders
+**Then** a skeleton card (`animate-pulse`, `bg-[#EDE8E0]`) is shown for a minimum of 300ms; then a `CoachVoiceLine` empty state appears: "Your briefing is generating — check back in a few minutes." or on the first day: "Your first briefing arrives tomorrow at [configured time]."
+
+**Given** the page loads on mobile (< 768px)
+**When** the card stack renders
+**Then** cards are full-width, single-column, vertically stacked; on tablet/desktop they are centred with a 680px max-width
+
+**Given** the `briefings` table RLS is in place
+**When** the RSC fetches the briefing
+**Then** only the authenticated user's briefing for today is returned; no other user's data is accessible
+
+### Story 4.3: Briefing History & Helpfulness Feedback
+
+As a signed-in user,
+I want to browse my last 30 days of briefings and mark suggestions as helpful or not helpful,
+So that I can review my coaching history and signal to the AI what is working for me.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/briefing`
+**When** the page loads
+**Then** my last 30 briefings are listed ordered by date descending; each row shows: date, first 100 characters of opening prose, email delivery status badge; skeleton loading shown during fetch; `GET /api/briefing` filters server-side to `briefing_date >= (today − 30 days)`
+
+**Given** no briefings exist yet
+**When** the history page loads
+**Then** a `CoachVoiceLine` reads "Your briefing history will appear here. Check back after your first briefing."
+
+**Given** I tap a briefing entry
+**When** I navigate to `/briefing/[id]`
+**Then** the full briefing card stack renders using the same `BriefingCard` and `AiDisclosureWrapper` components as the Today view; `GET /api/briefing/[id]` returns the single briefing for the authenticated user
+
+**Given** I am viewing a `BriefingCard` suggestion variant
+**When** I hover or focus the card
+**Then** two ghost icon buttons appear: "Mark as helpful" (thumb up) and "Mark as not helpful" (thumb down); each has `aria-label`; minimum 44×44px touch target
+
+**Given** I tap a helpfulness button
+**When** `PATCH /api/briefing/[id]` succeeds with `{ helpful: true | false }`
+**Then** the selected icon fills with the domain colour; the other icon dims; the rating persists on page reload
+
+**Given** a briefing was previously rated
+**When** I open it again
+**Then** the previously selected icon is pre-filled from the `briefings` table `helpful` column
+
+**Given** any `/api/briefing` route handler runs
+**When** the handler executes
+**Then** session is verified first; all queries use `user.id`; responses follow `{ data: ... }` or `{ error: ... }`; unauthenticated requests return HTTP 401
+
+---
+
+## Epic 5: Goal Progress, Insights & Re-engagement
+
+Users can track progress toward each active goal, see their check-in streak, view a weekly summary, and receive a gentle coach-voice nudge after 48h inactivity. Users control which notification types they receive and can unsubscribe from non-critical emails.
+
+### Story 5.1: Goal Progress & Check-In Streak
+
+As a signed-in user,
+I want to view my progress toward each active goal and my consecutive check-in streak,
+So that I can see how I'm tracking against my targets and feel motivated to check in daily.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/goals`
+**When** the page loads
+**Then** each active goal is listed with: a `DomainChip` display label, goal title, a `Progress` bar (shadcn) showing current vs target value, and a `StreakBadge` in the page header; skeleton loading is shown during fetch
+
+**Given** the `StreakBadge` renders
+**When** my consecutive check-in count is computed server-side
+**Then** the badge shows a Lucide flame icon (16px amber) + streak count + "day streak" label in `bg-amber-50 border border-amber-200 rounded-full`; zero state shows greyed flame + "Start your streak"; milestone states (7, 30, 100 days) trigger a brief pulse animation on load that respects `prefers-reduced-motion`; `aria-label="[n] day streak"`
+
+**Given** `GET /api/goals/[id]/progress` is called
+**When** the server computes the streak
+**Then** it counts consecutive calendar days with a `checkins` row ending today (in the user's timezone); if today has no check-in yet, the streak equals yesterday's count — the streak is not broken until tomorrow
+
+**Given** I tap a goal
+**When** I navigate to `/goals/[id]`
+**Then** the detail view shows: goal title, domain, target value, current value (derived from the most recent check-in for that domain metric), progress bar, streak badge, and an "Edit goal" button
+
+**Given** progress is computed
+**When** `GET /api/goals/[id]/progress` responds
+**Then** it returns `{ data: { currentValue, targetValue, streakCount, percentComplete } }`; health progress = most recent weight vs target weight; finance progress = cumulative daily spend this month vs monthly budget target; wellness progress = 7-day average sleep hours vs target; session verified first; RLS enforced at DB level
+
+**Given** the goals list is empty
+**When** the page renders
+**Then** a `CoachVoiceLine` reads "You haven't set any goals yet. Let's start with one — what do you most want to change this month?" with an "Add a goal" primary button
+
+### Story 5.2: Weekly Summary
+
+As a signed-in user,
+I want to view a weekly summary of my check-in data and briefing history,
+So that I can reflect on my week and see patterns across my goals.
+
+**Acceptance Criteria:**
+
+**Given** I am on the `/goals` page
+**When** the weekly summary section renders
+**Then** it shows for the current ISO week (Monday–Sunday in my timezone): days checked in (e.g. "5 of 7 days"), briefings received count, and per-domain average metric values (average mood, average sleep hours, total daily spend)
+
+**Given** `GET /api/checkins/summary` is called
+**When** the server queries the current week's data
+**Then** it filters `checkins` where `checked_in_at` falls within the current ISO week in the user's timezone; aggregates are computed server-side; session verified; RLS enforced; response: `{ data: { daysCheckedIn, briefingsReceived, domainAverages: { health, finance, wellness } } }`
+
+**Given** I have fewer than 3 check-ins for the week
+**When** the summary section renders
+**Then** a `CoachVoiceLine` reads "Check in a few more times this week to see your summary."
+
+**Given** the summary section is loading
+**When** data is in flight
+**Then** a skeleton placeholder matching the section height is shown; content appears without layout shift
+
+### Story 5.3: Inactivity Detection & Re-engagement Email
+
+As a user who has gone quiet,
+I want to receive a gentle coach-voice nudge email after 48 hours without a check-in,
+So that I'm reminded to re-engage without feeling judged or guilty.
+
+**Acceptance Criteria:**
+
+**Given** an Inngest scheduled job (`checkInactivity`) runs every hour
+**When** it queries Supabase
+**Then** it identifies users where: the most recent `checkins.checked_in_at < (now − 48 hours)` AND (`last_reengagement_sent_at IS NULL` OR `last_reengagement_sent_at < (now − 7 days)`) AND profile is complete AND notification preference for re-engagement is enabled
+
+**Given** an inactive user is identified
+**When** a `notification/reengagement.triggered` Inngest event is emitted
+**Then** the payload is `{ userId, triggeredAt, goalTitle }` — no PII beyond `userId` in the event payload
+
+**Given** the `sendReengagement` function runs
+**When** it builds the email via `lib/email/templates/reengagement.ts`
+**Then** subject is "[First name], still here for you"; body contains one empathy sentence + specific goal mention ("Still working toward [goal title]?") + single CTA "Update my goals" deep-linking to `/goals`; plain-text alternative included; physical mailing address in footer (CAN-SPAM); no streak counter; no guilt framing
+
+**Given** the re-engagement email is sent
+**When** Resend confirms delivery
+**Then** `profiles.last_reengagement_sent_at` is updated to `now`; a `notifications` row is inserted with `user_id`, `notification_type: 'reengagement'`, `sent_at`, `email_status: 'delivered'`; no further re-engagement is sent for 7 days
+
+**Given** the `/goals` deep link in the email is tapped
+**When** the user is unauthenticated
+**Then** they are redirected to `/sign-in?redirect=/goals`; after sign-in they land on `/goals` directly
+
+**Given** the Inngest function logs its activity
+**When** it writes to the console
+**Then** structured JSON contains `{ userId, event: 'reengagement_sent' }` — no email address or goal details in log fields
+
+### Story 5.4: Notification Preferences & Unsubscribe
+
+As a signed-in user,
+I want to control which email notifications I receive and unsubscribe from non-critical emails in one click,
+So that I only receive communications that are useful to me.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/settings`
+**When** the Notifications section renders
+**Then** I see toggles for: "Daily briefing emails" (default on) and "Re-engagement nudge emails" (default on); each toggle has a label and a brief description; changes save immediately on toggle (no save button needed)
+
+**Given** I toggle a notification preference
+**When** `PATCH /api/notifications` is called with `{ briefingEmails: boolean, reengagementEmails: boolean }`
+**Then** `NotificationPreferencesSchema` Zod validates the body; preferences are stored in a `notification_preferences` JSONB column on `profiles`; response is `{ data: { updated: true } }`
+
+**Given** the briefing or re-engagement Inngest function runs for a user
+**When** it checks preferences before sending
+**Then** if the relevant preference is `false` the send is skipped and `email_status: 'skipped_preference'` is recorded on the `notifications` or `briefings` row; no email is dispatched
+
+**Given** every outgoing email is sent
+**When** the email template is built
+**Then** the footer includes a one-click unsubscribe link: `/api/unsubscribe?token=[HMAC]` where token = `HMAC-SHA256(userId + ':' + email)` signed with `UNSUBSCRIBE_SECRET` env var
+
+**Given** I click the unsubscribe link in an email
+**When** `GET /api/unsubscribe?token=[token]` is called (unauthenticated route)
+**Then** the server validates the HMAC; if valid, all non-critical email preferences are set to `false` and an `audit_logs` row is written with `event_type: 'unsubscribe'` and `user_id`; the response is a plain HTML confirmation: "You've been unsubscribed. You can re-enable notifications in your settings anytime."
+
+**Given** the unsubscribe token is invalid or tampered
+**When** `GET /api/unsubscribe` is called
+**Then** the server returns HTTP 400 with a plain HTML page: "This unsubscribe link is invalid or has expired."
+
+**Given** critical emails are triggered (data export download link, account deletion confirmation, breach notification)
+**When** those functions send email
+**Then** they bypass notification preferences entirely — critical emails are always delivered regardless of preference settings
+
+---
+
+## Epic 6: Privacy, Data Control & Compliance
+
+Users can export all their data, view a data summary, and delete their account with all associated data. The platform automatically enforces GDPR retention limits and maintains an append-only audit log.
+
+### Story 6.1: Personal Data Export
+
+As a signed-in user,
+I want to export all my personal data in a machine-readable format,
+So that I can access a complete copy of everything LifePilot holds about me.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/data`
+**When** I tap "Request data export"
+**Then** `POST /api/export` verifies my session, emits an `export/data.requested` Inngest event with `{ userId, triggeredAt }`, writes an `audit_logs` row with `event_type: 'data_export_requested'`, and returns `{ data: { message: "Your export is being prepared — you'll receive an email when it's ready." } }`
+
+**Given** the `exportUserData` Inngest function runs
+**When** it fetches my data
+**Then** it retrieves via `createServerClient()`: profile, all active and inactive goals, all checkins, all briefings, and audit_logs for the user; assembles a single JSON file: `{ exportedAt, profile, goals, checkins, briefings, auditLog }`
+
+**Given** the JSON file is assembled
+**When** it is stored
+**Then** it is uploaded to the private Supabase Storage `exports` bucket at path `exports/{userId}/{timestamp}.json`; the bucket has no public access; RLS policy: SELECT allowed only where `user_id = auth.uid()`
+
+**Given** the file is stored
+**When** the download link email is sent via `lib/email/templates/dataExport.ts`
+**Then** subject is "Your LifePilot data export is ready"; body contains a "Download your data" button with a signed URL (1-hour expiry); plain-text alternative included; this is a critical email and bypasses notification preferences
+
+**Given** the signed URL has expired (> 1 hour)
+**When** the user taps the download link
+**Then** Supabase Storage returns an access denied error; the `/data` page allows requesting a new export
+
+**Given** the Inngest function logs its activity
+**When** it writes to the console
+**Then** structured JSON contains `{ userId, event: 'data_export_generated', fileSizeBytes }` — no personal data in log fields
+
+### Story 6.2: Data Summary & Account Deletion
+
+As a signed-in user,
+I want to view a summary of what data is stored about me and permanently delete my account,
+So that I can exercise my GDPR/CCPA rights to transparency and erasure.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/data`
+**When** the page loads via RSC
+**Then** a human-readable data summary is shown: profile fields stored (name, age, gender, height, weight, location, budget, briefing time), goal count, check-in count and date range, briefing count, consent date, and sub-processor list (Supabase, Anthropic, Resend, Vercel, Inngest); all data fetched using the authenticated user's session with RLS enforced
+
+**Given** I scroll to the bottom of `/data`
+**When** I tap "Delete my account"
+**Then** a Dialog opens: "This will permanently delete your account and all associated data — briefings, check-ins, goals, and profile. This cannot be undone." with buttons "Delete my account permanently" (destructive) and "Keep my account" (primary)
+
+**Given** I confirm deletion
+**When** `DELETE /api/profile` runs
+**Then** in order: an `audit_logs` row is written with `event_type: 'account_deleted'`; then all `checkins`, `briefings`, `goals`, `notifications`, and `audit_logs` rows for the user are hard-deleted; then the Supabase Auth user record is deleted (cascading to the `profiles` row); then the session cookie is invalidated
+
+**Given** deletion completes
+**When** the response is received
+**Then** the user is redirected to `/sign-in?message=account_deleted`; the sign-in page shows a `CoachVoiceLine`: "Your account has been permanently deleted. We're sorry to see you go."
+
+**Given** the deletion route logs its activity
+**When** it writes to the console
+**Then** structured JSON contains `{ event: 'account_deleted', userId }` — no email address or personal data in log fields
+
+### Story 6.3: Automated Data Retention
+
+As a platform operator subject to GDPR data minimisation requirements,
+I want check-in data older than 12 months and briefings older than 6 months deleted automatically,
+So that the platform complies with GDPR Art. 5(1)(e) without manual intervention.
+
+**Acceptance Criteria:**
+
+**Given** the `retentionCleanup` Inngest scheduled job is registered at `POST /api/inngest`
+**When** it runs nightly at 02:00 UTC
+**Then** it deletes all `checkins` rows where `checked_in_at < (now − 12 months)` across all users, then deletes all `briefings` rows where `briefing_date < (now − 6 months)` across all users; the two deletions are separate DB operations (not a single transaction)
+
+**Given** the job uses a Supabase service role client
+**When** it performs deletions
+**Then** it bypasses RLS (service role) to operate across all users; no user session is required; the service role key is stored in Vercel environment variables only
+
+**Given** the job completes
+**When** it logs its result
+**Then** structured JSON contains `{ event: 'retention_cleanup_complete', checkinsDeleted: N, briefingsDeleted: N, ranAt: ISO }` — no user IDs or content in log fields
+
+**Given** the migration for retention indexes is applied
+**When** the DELETE queries run
+**Then** an index on `checkins(checked_in_at)` and an index on `briefings(briefing_date)` exist to prevent full table scans
+
+**Given** the Inngest function fails
+**When** the failure occurs
+**Then** Inngest retries up to 3 times; failure is visible in the Inngest dashboard; no partial deletion state is left inconsistent (each deletion is idempotent)
+
+---
+
+## Epic 7: Administration & Operations
+
+Operators can view aggregate platform health metrics, look up per-user email delivery status, and send system-wide announcements — without accessing any personal health or financial data.
+
+### Story 7.1: Operator Metrics Dashboard
+
+As a platform operator,
+I want to view aggregate platform health metrics (DAU, briefing delivery rate, check-in rate) without accessing individual user data,
+So that I can monitor the health and growth of the platform.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/admin`
+**When** the `admin/layout.tsx` runs
+**Then** it verifies `user.role === 'admin'` after the session check; unauthenticated or non-admin users are redirected to `/dashboard`; the admin role check is a separate guard from regular auth middleware
+
+**Given** I am an authenticated admin on `/admin`
+**When** the dashboard loads via RSC
+**Then** `GET /api/admin/metrics` returns aggregate stats computed server-side: DAU (distinct `user_id` count in `checkins` where `checked_in_at >= today 00:00 UTC`), briefing delivery rate (delivered briefings today ÷ total briefings today as a percentage), check-in rate (distinct users who checked in today ÷ users with a complete profile as a percentage), and total registered users
+
+**Given** the metrics response is returned
+**When** the dashboard renders
+**Then** stats are displayed as simple stat cards (number + label); no user-identifying information appears on any admin page anywhere; no names, emails, health data, or financial data are present
+
+**Given** `GET /api/admin/metrics` is called
+**When** the Route Handler runs
+**Then** admin role is verified at the top before any DB query; the response wraps data in `{ data: { dau, briefingDeliveryRate, checkinRate, totalUsers } }`; all values are aggregates only
+
+**Given** the metrics are loading
+**When** data is in flight
+**Then** skeleton stat cards are shown; data refreshes on page reload (no real-time polling in MVP)
+
+### Story 7.2: Per-User Email Delivery Lookup
+
+As a platform operator handling a support request,
+I want to look up a user's email delivery status by their user ID,
+So that I can diagnose briefing delivery issues without accessing their health or financial data.
+
+**Acceptance Criteria:**
+
+**Given** I am on `/admin/users`
+**When** I enter a `user_id` (UUID format) and submit
+**Then** `GET /api/admin/users?userId=[id]` is called; admin role is verified at the top of the Route Handler; `AdminBroadcastSchema`-equivalent Zod validates the UUID format before any DB query
+
+**Given** the lookup succeeds
+**When** the response renders
+**Then** it shows for that user: account status (verified / unverified), last 10 briefing delivery records (`briefing_date` + `email_status` only — no briefing content), last 5 re-engagement notification records (`sent_at` + `email_status` only — no email content), and profile completeness (boolean); no name, email address, age, weight, budget, health metrics, financial data, or goal details appear anywhere in the response
+
+**Given** an admin performs a lookup
+**When** `GET /api/admin/users` completes
+**Then** an `audit_logs` row is written with `event_type: 'admin_user_lookup'`, `performed_by: adminUserId`, `target_user_id: userId`
+
+**Given** the `userId` param is missing or not a valid UUID
+**When** the Route Handler validates it
+**Then** it returns HTTP 400: `{ "error": { "code": "VALIDATION_ERROR", "message": "Invalid user ID format." } }`
+
+**Given** no user exists for the given ID
+**When** the DB query returns empty
+**Then** it returns HTTP 404: `{ "error": { "code": "NOT_FOUND", "message": "No user found with that ID." } }`
+
+### Story 7.3: System-Wide Broadcast
+
+As a platform operator,
+I want to send a system-wide announcement to all users via email,
+So that I can communicate important platform updates, new features, or maintenance notices.
+
+**Acceptance Criteria:**
+
+**Given** I am on `/admin/broadcast`
+**When** the form renders
+**Then** it shows a Subject field (max 120 chars) and a Body field (max 2,000 chars, plain text); both have visible character counters; a "Send broadcast" primary button submits the form
+
+**Given** I submit the broadcast form
+**When** `POST /api/admin/broadcast` runs
+**Then** admin role is verified first; `AdminBroadcastSchema` Zod in `lib/validation/admin.ts` validates both fields; a `notification/broadcast.requested` Inngest event is emitted with `{ adminUserId, subject, body, triggeredAt }`; the route returns `{ data: { message: "Broadcast queued — users will receive it shortly." } }`
+
+**Given** the Inngest `sendBroadcast` function runs
+**When** it fans out emails
+**Then** it fetches all user IDs with verified accounts and complete profiles; sends the broadcast email to each via Resend; the email includes a physical mailing address and one-click unsubscribe link (CAN-SPAM); users who have unsubscribed from non-critical emails are skipped
+
+**Given** the broadcast is queued
+**When** the form submission response is received
+**Then** a `CoachVoiceLine` on the page reads "Broadcast queued — users will receive it shortly." and the form fields reset
+
+**Given** the broadcast completes
+**When** the Inngest function finishes
+**Then** an `audit_logs` row is written with `event_type: 'admin_broadcast_sent'`, `performed_by: adminUserId`, `subject` — no body content stored in the audit log
+
+**Given** `POST /api/admin/broadcast` is called without admin role
+**When** the role check runs
+**Then** it returns HTTP 403: `{ "error": { "code": "FORBIDDEN", "message": "Admin access required." } }`

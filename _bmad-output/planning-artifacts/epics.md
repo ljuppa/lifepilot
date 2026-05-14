@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics]
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -903,3 +903,97 @@ So that the platform complies with GDPR Art. 5(1)(e) without manual intervention
 **Given** the Inngest function fails
 **When** the failure occurs
 **Then** Inngest retries up to 3 times; failure is visible in the Inngest dashboard; no partial deletion state is left inconsistent (each deletion is idempotent)
+
+---
+
+## Epic 7: Administration & Operations
+
+Operators can view aggregate platform health metrics, look up per-user email delivery status, and send system-wide announcements — without accessing any personal health or financial data.
+
+### Story 7.1: Operator Metrics Dashboard
+
+As a platform operator,
+I want to view aggregate platform health metrics (DAU, briefing delivery rate, check-in rate) without accessing individual user data,
+So that I can monitor the health and growth of the platform.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/admin`
+**When** the `admin/layout.tsx` runs
+**Then** it verifies `user.role === 'admin'` after the session check; unauthenticated or non-admin users are redirected to `/dashboard`; the admin role check is a separate guard from regular auth middleware
+
+**Given** I am an authenticated admin on `/admin`
+**When** the dashboard loads via RSC
+**Then** `GET /api/admin/metrics` returns aggregate stats computed server-side: DAU (distinct `user_id` count in `checkins` where `checked_in_at >= today 00:00 UTC`), briefing delivery rate (delivered briefings today ÷ total briefings today as a percentage), check-in rate (distinct users who checked in today ÷ users with a complete profile as a percentage), and total registered users
+
+**Given** the metrics response is returned
+**When** the dashboard renders
+**Then** stats are displayed as simple stat cards (number + label); no user-identifying information appears on any admin page anywhere; no names, emails, health data, or financial data are present
+
+**Given** `GET /api/admin/metrics` is called
+**When** the Route Handler runs
+**Then** admin role is verified at the top before any DB query; the response wraps data in `{ data: { dau, briefingDeliveryRate, checkinRate, totalUsers } }`; all values are aggregates only
+
+**Given** the metrics are loading
+**When** data is in flight
+**Then** skeleton stat cards are shown; data refreshes on page reload (no real-time polling in MVP)
+
+### Story 7.2: Per-User Email Delivery Lookup
+
+As a platform operator handling a support request,
+I want to look up a user's email delivery status by their user ID,
+So that I can diagnose briefing delivery issues without accessing their health or financial data.
+
+**Acceptance Criteria:**
+
+**Given** I am on `/admin/users`
+**When** I enter a `user_id` (UUID format) and submit
+**Then** `GET /api/admin/users?userId=[id]` is called; admin role is verified at the top of the Route Handler; `AdminBroadcastSchema`-equivalent Zod validates the UUID format before any DB query
+
+**Given** the lookup succeeds
+**When** the response renders
+**Then** it shows for that user: account status (verified / unverified), last 10 briefing delivery records (`briefing_date` + `email_status` only — no briefing content), last 5 re-engagement notification records (`sent_at` + `email_status` only — no email content), and profile completeness (boolean); no name, email address, age, weight, budget, health metrics, financial data, or goal details appear anywhere in the response
+
+**Given** an admin performs a lookup
+**When** `GET /api/admin/users` completes
+**Then** an `audit_logs` row is written with `event_type: 'admin_user_lookup'`, `performed_by: adminUserId`, `target_user_id: userId`
+
+**Given** the `userId` param is missing or not a valid UUID
+**When** the Route Handler validates it
+**Then** it returns HTTP 400: `{ "error": { "code": "VALIDATION_ERROR", "message": "Invalid user ID format." } }`
+
+**Given** no user exists for the given ID
+**When** the DB query returns empty
+**Then** it returns HTTP 404: `{ "error": { "code": "NOT_FOUND", "message": "No user found with that ID." } }`
+
+### Story 7.3: System-Wide Broadcast
+
+As a platform operator,
+I want to send a system-wide announcement to all users via email,
+So that I can communicate important platform updates, new features, or maintenance notices.
+
+**Acceptance Criteria:**
+
+**Given** I am on `/admin/broadcast`
+**When** the form renders
+**Then** it shows a Subject field (max 120 chars) and a Body field (max 2,000 chars, plain text); both have visible character counters; a "Send broadcast" primary button submits the form
+
+**Given** I submit the broadcast form
+**When** `POST /api/admin/broadcast` runs
+**Then** admin role is verified first; `AdminBroadcastSchema` Zod in `lib/validation/admin.ts` validates both fields; a `notification/broadcast.requested` Inngest event is emitted with `{ adminUserId, subject, body, triggeredAt }`; the route returns `{ data: { message: "Broadcast queued — users will receive it shortly." } }`
+
+**Given** the Inngest `sendBroadcast` function runs
+**When** it fans out emails
+**Then** it fetches all user IDs with verified accounts and complete profiles; sends the broadcast email to each via Resend; the email includes a physical mailing address and one-click unsubscribe link (CAN-SPAM); users who have unsubscribed from non-critical emails are skipped
+
+**Given** the broadcast is queued
+**When** the form submission response is received
+**Then** a `CoachVoiceLine` on the page reads "Broadcast queued — users will receive it shortly." and the form fields reset
+
+**Given** the broadcast completes
+**When** the Inngest function finishes
+**Then** an `audit_logs` row is written with `event_type: 'admin_broadcast_sent'`, `performed_by: adminUserId`, `subject` — no body content stored in the audit log
+
+**Given** `POST /api/admin/broadcast` is called without admin role
+**When** the role check runs
+**Then** it returns HTTP 403: `{ "error": { "code": "FORBIDDEN", "message": "Admin access required." } }`

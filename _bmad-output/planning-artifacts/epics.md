@@ -809,3 +809,97 @@ So that I only receive communications that are useful to me.
 **Given** critical emails are triggered (data export download link, account deletion confirmation, breach notification)
 **When** those functions send email
 **Then** they bypass notification preferences entirely — critical emails are always delivered regardless of preference settings
+
+---
+
+## Epic 6: Privacy, Data Control & Compliance
+
+Users can export all their data, view a data summary, and delete their account with all associated data. The platform automatically enforces GDPR retention limits and maintains an append-only audit log.
+
+### Story 6.1: Personal Data Export
+
+As a signed-in user,
+I want to export all my personal data in a machine-readable format,
+So that I can access a complete copy of everything LifePilot holds about me.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/data`
+**When** I tap "Request data export"
+**Then** `POST /api/export` verifies my session, emits an `export/data.requested` Inngest event with `{ userId, triggeredAt }`, writes an `audit_logs` row with `event_type: 'data_export_requested'`, and returns `{ data: { message: "Your export is being prepared — you'll receive an email when it's ready." } }`
+
+**Given** the `exportUserData` Inngest function runs
+**When** it fetches my data
+**Then** it retrieves via `createServerClient()`: profile, all active and inactive goals, all checkins, all briefings, and audit_logs for the user; assembles a single JSON file: `{ exportedAt, profile, goals, checkins, briefings, auditLog }`
+
+**Given** the JSON file is assembled
+**When** it is stored
+**Then** it is uploaded to the private Supabase Storage `exports` bucket at path `exports/{userId}/{timestamp}.json`; the bucket has no public access; RLS policy: SELECT allowed only where `user_id = auth.uid()`
+
+**Given** the file is stored
+**When** the download link email is sent via `lib/email/templates/dataExport.ts`
+**Then** subject is "Your LifePilot data export is ready"; body contains a "Download your data" button with a signed URL (1-hour expiry); plain-text alternative included; this is a critical email and bypasses notification preferences
+
+**Given** the signed URL has expired (> 1 hour)
+**When** the user taps the download link
+**Then** Supabase Storage returns an access denied error; the `/data` page allows requesting a new export
+
+**Given** the Inngest function logs its activity
+**When** it writes to the console
+**Then** structured JSON contains `{ userId, event: 'data_export_generated', fileSizeBytes }` — no personal data in log fields
+
+### Story 6.2: Data Summary & Account Deletion
+
+As a signed-in user,
+I want to view a summary of what data is stored about me and permanently delete my account,
+So that I can exercise my GDPR/CCPA rights to transparency and erasure.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/data`
+**When** the page loads via RSC
+**Then** a human-readable data summary is shown: profile fields stored (name, age, gender, height, weight, location, budget, briefing time), goal count, check-in count and date range, briefing count, consent date, and sub-processor list (Supabase, Anthropic, Resend, Vercel, Inngest); all data fetched using the authenticated user's session with RLS enforced
+
+**Given** I scroll to the bottom of `/data`
+**When** I tap "Delete my account"
+**Then** a Dialog opens: "This will permanently delete your account and all associated data — briefings, check-ins, goals, and profile. This cannot be undone." with buttons "Delete my account permanently" (destructive) and "Keep my account" (primary)
+
+**Given** I confirm deletion
+**When** `DELETE /api/profile` runs
+**Then** in order: an `audit_logs` row is written with `event_type: 'account_deleted'`; then all `checkins`, `briefings`, `goals`, `notifications`, and `audit_logs` rows for the user are hard-deleted; then the Supabase Auth user record is deleted (cascading to the `profiles` row); then the session cookie is invalidated
+
+**Given** deletion completes
+**When** the response is received
+**Then** the user is redirected to `/sign-in?message=account_deleted`; the sign-in page shows a `CoachVoiceLine`: "Your account has been permanently deleted. We're sorry to see you go."
+
+**Given** the deletion route logs its activity
+**When** it writes to the console
+**Then** structured JSON contains `{ event: 'account_deleted', userId }` — no email address or personal data in log fields
+
+### Story 6.3: Automated Data Retention
+
+As a platform operator subject to GDPR data minimisation requirements,
+I want check-in data older than 12 months and briefings older than 6 months deleted automatically,
+So that the platform complies with GDPR Art. 5(1)(e) without manual intervention.
+
+**Acceptance Criteria:**
+
+**Given** the `retentionCleanup` Inngest scheduled job is registered at `POST /api/inngest`
+**When** it runs nightly at 02:00 UTC
+**Then** it deletes all `checkins` rows where `checked_in_at < (now − 12 months)` across all users, then deletes all `briefings` rows where `briefing_date < (now − 6 months)` across all users; the two deletions are separate DB operations (not a single transaction)
+
+**Given** the job uses a Supabase service role client
+**When** it performs deletions
+**Then** it bypasses RLS (service role) to operate across all users; no user session is required; the service role key is stored in Vercel environment variables only
+
+**Given** the job completes
+**When** it logs its result
+**Then** structured JSON contains `{ event: 'retention_cleanup_complete', checkinsDeleted: N, briefingsDeleted: N, ranAt: ISO }` — no user IDs or content in log fields
+
+**Given** the migration for retention indexes is applied
+**When** the DELETE queries run
+**Then** an index on `checkins(checked_in_at)` and an index on `briefings(briefing_date)` exist to prevent full table scans
+
+**Given** the Inngest function fails
+**When** the failure occurs
+**Then** Inngest retries up to 3 times; failure is visible in the Inngest dashboard; no partial deletion state is left inconsistent (each deletion is idempotent)

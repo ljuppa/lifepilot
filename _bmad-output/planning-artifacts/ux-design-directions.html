@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LifePilot — Design Direction Exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #FAF9F6;
+    --foreground: #2D3142;
+    --primary: #46876A;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F1F2F5;
+    --muted: #F0EDE8;
+    --muted-foreground: #686F80;
+    --accent: #E8923A;
+    --coach-observation: #EDE8E0;
+    --border: #E2DDD7;
+    --destructive: #CC3333;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --radius: 0.75rem;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: #1a1a1a;
+    color: var(--foreground);
+    min-height: 100vh;
+  }
+
+  /* ── Showcase Shell ── */
+  .showcase-header {
+    background: #111;
+    color: #fff;
+    padding: 40px 48px 32px;
+    border-bottom: 1px solid #333;
+  }
+  .showcase-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .showcase-header p { font-size: 14px; color: #888; }
+
+  .direction-tabs {
+    background: #111;
+    display: flex;
+    gap: 0;
+    padding: 0 48px;
+    border-bottom: 1px solid #333;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 14px 24px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.15s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+  .tab:hover { color: #ccc; }
+  .tab.active { color: #fff; border-bottom-color: #46876A; }
+
+  .direction-panel { display: none; }
+  .direction-panel.active { display: block; }
+
+  .direction-meta {
+    background: #1a1a1a;
+    padding: 24px 48px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    gap: 48px;
+    align-items: flex-start;
+  }
+  .direction-meta h2 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .direction-meta .tagline { font-size: 13px; color: #888; max-width: 400px; }
+  .direction-meta .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .tag { padding: 3px 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 20px; font-size: 11px; color: #aaa; }
+
+  .preview-area {
+    padding: 48px;
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    overflow-x: auto;
+  }
+
+  .screen-frame {
+    flex-shrink: 0;
+    background: #2a2a2a;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .screen-frame.mobile { width: 375px; }
+  .screen-frame.desktop { width: 800px; }
+  .screen-label {
+    padding: 10px 16px;
+    font-size: 11px;
+    color: #666;
+    background: #222;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .screen-dots { display: flex; gap: 5px; }
+  .screen-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #ffbd2e; }
+  .dot-green { background: #28c840; }
+  .screen-title-bar { font-size: 11px; color: #555; }
+
+  /* ── DIRECTION A: The Letter ── */
+  .dir-a {
+    background: var(--background);
+    min-height: 700px;
+    font-family: var(--font-sans);
+  }
+
+  .dir-a-nav {
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dir-a-logo { font-size: 16px; font-weight: 700; color: var(--foreground); letter-spacing: -0.02em; }
+  .dir-a-logo span { color: var(--primary); }
+  .dir-a-nav-links { display: flex; gap: 4px; }
+  .dir-a-nav-link {
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--muted-foreground);
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .dir-a-nav-link.active {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+  .dir-a-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: white;
+  }
+
+  .dir-a-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  .dir-a-greeting {
+    font-size: 13px;
+    color: var(--muted-foreground);
+    margin-bottom: 6px;
+  }
+  .dir-a-headline {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--foreground);
+    line-height: 1.3;
+    margin-bottom: 24px;
+    letter-spacing: -0.01em;
+  }
+
+  .dir-a-briefing-card {
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(70,60,50,0.08);
+  }
+  .dir-a-briefing-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+  .status-text { font-size: 12px; font-weight: 500; color: var(--primary); }
+  .status-date { font-size: 12px; color: var(--muted-foreground); margin-left: auto; }
+
+  .dir-a-letter-body {
+    font-family: var(--font-serif);
+    font-size: 17px;
+    line-height: 1.75;
+    color: var(--foreground);
+    margin-bottom: 20px;
+  }
+  .dir-a-letter-body em { font-style: normal; color: var(--primary); font-weight: 600; }
+
+  .dir-a-suggestion {
+    background: var(--muted);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+  .dir-a-suggestion-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    margin-bottom: 8px;
+  }
+  .dir-a-suggestion-text {
+    font-size: 15px;
+    color: var(--foreground);
+    line-height: 1.5;
+    font-weight: 500;
+  }
+  .dir-a-domains {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .domain-chip {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--secondary);
+    color: var(--muted-foreground);
+    border: 1px solid var(--border);
+  }
+  .domain-chip.health { background: #EBF5F0; color: #46876A; border-color: #C8E4D8; }
+  .domain-chip.finance { background: #FEF3E8; color: #C47A2A; border-color: #F5CFA0; }
+  .domain-chip.wellness { background: #EEF0F8; color: #5B6490; border-color: #C8CCDF; }
+
+  .dir-a-sign-off {
+    font-family: var(--font-serif);
+    font-size: 15px;
+    color: var(--muted-foreground);
+    font-style: italic;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .dir-a-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    margin-top: 20px;
+  }
+
+  .dir-a-secondary-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .dir-a-mini-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    background: var(--background);
+  }
+  .dir-a-mini-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    margin-bottom: 8px;
+  }
+  .dir-a-mini-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--foreground);
+    margin-bottom: 2px;
+  }
+  .dir-a-mini-sub { font-size: 12px; color: var(--muted-foreground); }
+  .dir-a-streak { color: var(--accent); }
+
+  /* ── DIRECTION B: The Coach's Room ── */
+  .dir-b {
+    background: var(--background);
+    min-height: 700px;
+    display: flex;
+  }
+
+  .dir-b-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--foreground);
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .dir-b-logo {
+    padding: 0 20px 24px;
+    font-size: 15px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.02em;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 16px;
+  }
+  .dir-b-logo span { color: #7FC4A4; }
+
+  .dir-b-nav-item {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .dir-b-nav-item.active {
+    color: white;
+    background: rgba(255,255,255,0.08);
+    border-left-color: #7FC4A4;
+  }
+  .dir-b-nav-icon { font-size: 16px; }
+  .dir-b-user {
+    margin-top: auto;
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dir-b-avatar { width: 28px; height: 28px; border-radius: 50%; background: #46876A; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: white; flex-shrink: 0; }
+  .dir-b-user-name { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.7); }
+
+  .dir-b-main {
+    flex: 1;
+    padding: 32px;
+    overflow: auto;
+  }
+
+  .dir-b-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .dir-b-page-title { font-size: 20px; font-weight: 700; color: var(--foreground); letter-spacing: -0.02em; }
+  .dir-b-date { font-size: 13px; color: var(--muted-foreground); }
+
+  .dir-b-briefing {
+    background: var(--foreground);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    color: white;
+  }
+  .dir-b-briefing-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #7FC4A4;
+    margin-bottom: 12px;
+  }
+  .dir-b-briefing-prose {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 20px;
+  }
+  .dir-b-highlight {
+    display: inline;
+    background: rgba(116,196,164,0.2);
+    color: #A8DCC4;
+    border-radius: 4px;
+    padding: 1px 4px;
+  }
+  .dir-b-action-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .dir-b-btn-primary {
+    background: #46876A;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-sans);
+  }
+  .dir-b-domain-tags { display: flex; gap: 6px; }
+  .dir-b-domain-tag {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
+  }
+
+  .dir-b-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .dir-b-card {
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .dir-b-card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); margin-bottom: 10px; }
+  .dir-b-card-value { font-size: 26px; font-weight: 700; color: var(--foreground); margin-bottom: 2px; }
+  .dir-b-card-sub { font-size: 12px; color: var(--muted-foreground); }
+  .dir-b-card-accent { color: var(--accent); }
+
+  /* ── DIRECTION C: The Morning Ritual ── */
+  .dir-c {
+    background: #F5F0EA;
+    min-height: 700px;
+  }
+  .dir-c-topbar {
+    background: var(--primary);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dir-c-logo { font-size: 15px; font-weight: 700; color: white; letter-spacing: -0.01em; }
+  .dir-c-avatar { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: 600; }
+
+  .dir-c-hero {
+    background: var(--primary);
+    padding: 24px 24px 48px;
+    position: relative;
+  }
+  .dir-c-hero-eyebrow { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+  .dir-c-hero-title {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    color: white;
+    line-height: 1.4;
+    font-weight: 400;
+    max-width: 320px;
+  }
+  .dir-c-hero em { font-style: normal; font-weight: 600; }
+
+  .dir-c-cards {
+    padding: 0 16px;
+    margin-top: -24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .dir-c-card {
+    background: white;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(60,50,40,0.08);
+  }
+  .dir-c-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .dir-c-card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); }
+  .dir-c-card-action { font-size: 12px; font-weight: 600; color: var(--primary); }
+
+  .dir-c-checkin-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+  .dir-c-checkin-label { font-size: 13px; color: var(--foreground); flex: 1; }
+  .dir-c-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .dir-c-chip.yes { background: #EBF5F0; color: var(--primary); }
+  .dir-c-chip.no { background: var(--muted); color: var(--muted-foreground); }
+
+  .dir-c-mood-row { display: flex; justify-content: space-between; padding: 4px 0; }
+  .dir-c-mood-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    background: var(--muted);
+    cursor: pointer;
+  }
+  .dir-c-mood-dot.selected { background: var(--primary); }
+
+  .dir-c-submit {
+    width: 100%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    margin-top: 14px;
+  }
+
+  .dir-c-goal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .dir-c-goal-row:last-child { border-bottom: none; }
+  .dir-c-goal-icon { font-size: 20px; }
+  .dir-c-goal-info { flex: 1; }
+  .dir-c-goal-name { font-size: 14px; font-weight: 600; color: var(--foreground); }
+  .dir-c-goal-progress { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+  .dir-c-goal-bar-track { height: 4px; background: var(--muted); border-radius: 2px; margin-top: 6px; }
+  .dir-c-goal-bar-fill { height: 4px; background: var(--primary); border-radius: 2px; }
+
+  .dir-c-bottom-nav {
+    background: white;
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 0 4px;
+    margin-top: 16px;
+  }
+  .dir-c-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    cursor: pointer;
+  }
+  .dir-c-nav-item.active { color: var(--primary); }
+  .dir-c-nav-icon { font-size: 20px; }
+
+  /* ── Coach Observation Example ── */
+  .coach-obs-example {
+    background: var(--coach-observation);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 20px 0;
+    border-left: 3px solid var(--accent);
+  }
+  .coach-obs-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .coach-obs-text {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--foreground);
+    font-style: italic;
+  }
+
+  /* Tab JS */
+  .notes-section {
+    padding: 32px 48px 48px;
+    background: #1a1a1a;
+  }
+  .notes-section h3 { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 12px; }
+  .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .note-card {
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .note-card h4 { font-size: 12px; font-weight: 600; color: #ccc; margin-bottom: 6px; }
+  .note-card p { font-size: 12px; color: #666; line-height: 1.5; }
+  .note-card .pros { color: #7FC4A4; font-size: 11px; margin-top: 8px; }
+  .note-card .cons { color: #E8923A; font-size: 11px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="showcase-header">
+  <h1>LifePilot — Design Direction Exploration</h1>
+  <p>Three visual directions for your review. All use the same design tokens, typography, and colour palette. Choose a favourite or combine elements.</p>
+</div>
+
+<div class="direction-tabs">
+  <button class="tab active" onclick="showDirection('a', this)">Direction A — The Letter</button>
+  <button class="tab" onclick="showDirection('b', this)">Direction B — The Coach's Room</button>
+  <button class="tab" onclick="showDirection('c', this)">Direction C — The Morning Ritual</button>
+  <button class="tab" onclick="showDirection('obs', this)">Coach's Observation Pattern</button>
+</div>
+
+<!-- ═══════════════════════════════════ DIRECTION A ═══════════════════════════════════ -->
+<div id="panel-a" class="direction-panel active">
+  <div class="direction-meta">
+    <div>
+      <h2>Direction A — The Letter</h2>
+      <p class="tagline">Minimal, prose-first, editorial. The app recedes; the coach's voice leads. Feels like opening a personal letter each morning.</p>
+      <div class="tags">
+        <span class="tag">Prose-first</span>
+        <span class="tag">Single column</span>
+        <span class="tag">Top navigation</span>
+        <span class="tag">Maximum whitespace</span>
+        <span class="tag">Lora serif prominent</span>
+      </div>
+    </div>
+  </div>
+  <div class="preview-area">
+    <div>
+      <div class="screen-frame desktop">
+        <div class="screen-label">
+          <div class="screen-dots"><div class="screen-dot dot-red"></div><div class="screen-dot dot-yellow"></div><div class="screen-dot dot-green"></div></div>
+          <span class="screen-title-bar">lifepilot.app — Dashboard</span>
+        </div>
+        <div class="dir-a">
+          <div class="dir-a-nav">
+            <div class="dir-a-logo">Life<span>Pilot</span></div>
+            <div class="dir-a-nav-links">
+              <div class="dir-a-nav-link active">Today</div>
+              <div class="dir-a-nav-link">Goals</div>
+              <div class="dir-a-nav-link">Journey</div>
+              <div class="dir-a-nav-link">Profile</div>
+            </div>
+            <div class="dir-a-avatar">LJ</div>
+          </div>
+          <div class="dir-a-content">
+            <div class="dir-a-greeting">Thursday, 14 May 2026</div>
+            <div class="dir-a-headline">Good morning, Ljuppa.</div>
+
+            <div class="dir-a-briefing-card">
+              <div class="dir-a-briefing-status">
+                <div class="status-dot"></div>
+                <span class="status-text">Today's briefing</span>
+                <span class="status-date">Delivered 07:02</span>
+              </div>
+
+              <div class="dir-a-letter-body">
+                I noticed you skipped yesterday's evening walk — the third time this week. I don't think it's laziness. Your Tuesday check-in mentioned the budget review was weighing on you, and that kind of mental load tends to kill the 6pm motivation window.
+              </div>
+
+              <div class="dir-a-suggestion">
+                <div class="dir-a-suggestion-label">Today's focus</div>
+                <div class="dir-a-suggestion-text">A 20-minute walk before your 10am call — it clears the mental backlog, costs nothing, and counts toward both your step goal and your stress management target.</div>
+                <div class="dir-a-domains">
+                  <span class="domain-chip health">💪 Health</span>
+                  <span class="domain-chip wellness">🧠 Wellness</span>
+                  <span class="domain-chip finance">💰 Budget-neutral</span>
+                </div>
+              </div>
+
+              <div class="dir-a-letter-body">
+                Your finance numbers from last week look steadier than you probably feel right now — you're actually £140 under the dining budget. Worth knowing.
+              </div>
+
+              <div class="dir-a-sign-off">That's your Thursday, Ljuppa. Make it count.</div>
+
+              <button class="dir-a-cta-btn">Log today's check-in →</button>
+            </div>
+
+            <div class="dir-a-secondary-cards">
+              <div class="dir-a-mini-card">
+                <div class="dir-a-mini-label">Active goals</div>
+                <div class="dir-a-mini-value">4</div>
+                <div class="dir-a-mini-sub">Health · Finance · Wellness · Travel</div>
+              </div>
+              <div class="dir-a-mini-card">
+                <div class="dir-a-mini-label">Check-in streak</div>
+                <div class="dir-a-mini-value dir-a-streak">11 days</div>
+                <div class="dir-a-mini-sub">Best: 23 days</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes-section">
+    <h3>Direction A — Design notes</h3>
+    <div class="notes-grid">
+      <div class="note-card">
+        <h4>Personality</h4>
+        <p>Editorial, personal, letter-like. The Lora serif carries the coach's voice. Whitespace is generous — nothing competes with the briefing prose.</p>
+        <p class="pros">✓ Most aligned with "hired a personal life coach" north star</p>
+        <p class="cons">↗ Requires strong AI copy — sparse layout exposes weak briefings</p>
+      </div>
+      <div class="note-card">
+        <h4>Navigation</h4>
+        <p>Top nav, horizontal tabs. Simple, familiar, desktop-first. Works well for the secondary nature of the web app (email is primary).</p>
+        <p class="pros">✓ Zero cognitive load — users know this pattern</p>
+        <p class="cons">↗ Collapses to hamburger on mobile — adds one tap</p>
+      </div>
+      <div class="note-card">
+        <h4>Information hierarchy</h4>
+        <p>Briefing prose at the top, with one prominent action. Secondary stats below the fold — metrics are supportive, not dominant.</p>
+        <p class="pros">✓ Coach voice leads; data follows</p>
+        <p class="cons">↗ Goal progress is less visible at a glance</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ DIRECTION B ═══════════════════════════════════ -->
+<div id="panel-b" class="direction-panel">
+  <div class="direction-meta">
+    <div>
+      <h2>Direction B — The Coach's Room</h2>
+      <p class="tagline">Structured, authoritative, side-nav. The dark sidebar signals a premium, professional tool. The briefing is still prose-first but set against a confident dark container.</p>
+      <div class="tags">
+        <span class="tag">Side navigation</span>
+        <span class="tag">Dark sidebar</span>
+        <span class="tag">Brief on dark canvas</span>
+        <span class="tag">Three-column grid</span>
+        <span class="tag">Authority aesthetic</span>
+      </div>
+    </div>
+  </div>
+  <div class="preview-area">
+    <div>
+      <div class="screen-frame desktop">
+        <div class="screen-label">
+          <div class="screen-dots"><div class="screen-dot dot-red"></div><div class="screen-dot dot-yellow"></div><div class="screen-dot dot-green"></div></div>
+          <span class="screen-title-bar">lifepilot.app — Dashboard</span>
+        </div>
+        <div class="dir-b">
+          <div class="dir-b-sidebar">
+            <div class="dir-b-logo">Life<span>Pilot</span></div>
+            <div class="dir-b-nav-item active"><span class="dir-b-nav-icon">◆</span> Today</div>
+            <div class="dir-b-nav-item"><span class="dir-b-nav-icon">◎</span> Goals</div>
+            <div class="dir-b-nav-item"><span class="dir-b-nav-icon">📖</span> Journey</div>
+            <div class="dir-b-nav-item"><span class="dir-b-nav-icon">✓</span> Check-in</div>
+            <div class="dir-b-nav-item"><span class="dir-b-nav-icon">⚙</span> Settings</div>
+            <div class="dir-b-user">
+              <div class="dir-b-avatar">LJ</div>
+              <span class="dir-b-user-name">Ljuppa</span>
+            </div>
+          </div>
+          <div class="dir-b-main">
+            <div class="dir-b-topbar">
+              <div class="dir-b-page-title">Thursday, 14 May</div>
+              <div class="dir-b-date">Briefing delivered 07:02</div>
+            </div>
+            <div class="dir-b-briefing">
+              <div class="dir-b-briefing-eyebrow">Today's briefing</div>
+              <div class="dir-b-briefing-prose">
+                I noticed you skipped yesterday's evening walk — the third time this week. Your Tuesday check-in mentioned the budget review was weighing on you, and <span class="dir-b-highlight">that kind of mental load tends to kill the 6pm motivation window.</span> A 20-minute walk before your 10am call today clears the mental backlog, costs nothing, and advances three of your goals simultaneously.
+              </div>
+              <div class="dir-b-action-row">
+                <button class="dir-b-btn-primary">Log check-in</button>
+                <div class="dir-b-domain-tags">
+                  <span class="dir-b-domain-tag">💪 Health</span>
+                  <span class="dir-b-domain-tag">🧠 Wellness</span>
+                  <span class="dir-b-domain-tag">💰 Finance</span>
+                </div>
+              </div>
+            </div>
+            <div class="dir-b-grid">
+              <div class="dir-b-card">
+                <div class="dir-b-card-label">Check-in streak</div>
+                <div class="dir-b-card-value dir-b-card-accent">11</div>
+                <div class="dir-b-card-sub">days in a row</div>
+              </div>
+              <div class="dir-b-card">
+                <div class="dir-b-card-label">Active goals</div>
+                <div class="dir-b-card-value">4</div>
+                <div class="dir-b-card-sub">across 4 domains</div>
+              </div>
+              <div class="dir-b-card">
+                <div class="dir-b-card-label">Budget status</div>
+                <div class="dir-b-card-value" style="color: var(--primary);">£140</div>
+                <div class="dir-b-card-sub">under dining budget</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes-section">
+    <h3>Direction B — Design notes</h3>
+    <div class="notes-grid">
+      <div class="note-card">
+        <h4>Personality</h4>
+        <p>Premium, confident, structured. The dark sidebar creates a distinct "entering a space" feeling. The briefing on a dark canvas makes prose feel important.</p>
+        <p class="pros">✓ Feels like a professional tool worth paying for</p>
+        <p class="cons">↗ Darker aesthetic may conflict with "warm coach" metaphor</p>
+      </div>
+      <div class="note-card">
+        <h4>Navigation</h4>
+        <p>Persistent side nav — always visible on desktop. Common in productivity tools (Linear, Notion, Vercel). Efficient for power users.</p>
+        <p class="pros">✓ Always one click from any section</p>
+        <p class="cons">↗ Takes ~220px of horizontal space — tighter on smaller screens</p>
+      </div>
+      <div class="note-card">
+        <h4>Information hierarchy</h4>
+        <p>Briefing is visually dominant (full-width dark card). Three-column stats grid below — more data visible at a glance than Direction A.</p>
+        <p class="pros">✓ Goal progress and data more prominent</p>
+        <p class="cons">↗ Risk of feeling more dashboard than coaching relationship</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ DIRECTION C ═══════════════════════════════════ -->
+<div id="panel-c" class="direction-panel">
+  <div class="direction-meta">
+    <div>
+      <h2>Direction C — The Morning Ritual</h2>
+      <p class="tagline">Mobile-native, warm, card-stacked. Designed for the check-in flow first — the web app as a companion to the email, built for the phone in hand.</p>
+      <div class="tags">
+        <span class="tag">Mobile-first</span>
+        <span class="tag">Bottom navigation</span>
+        <span class="tag">Card stack layout</span>
+        <span class="tag">Primary green header</span>
+        <span class="tag">Check-in optimised</span>
+      </div>
+    </div>
+  </div>
+  <div class="preview-area">
+    <div>
+      <div class="screen-frame mobile">
+        <div class="screen-label">
+          <div class="screen-dots"><div class="screen-dot dot-red"></div><div class="screen-dot dot-yellow"></div><div class="screen-dot dot-green"></div></div>
+          <span class="screen-title-bar">iPhone — LifePilot</span>
+        </div>
+        <div class="dir-c">
+          <div class="dir-c-topbar">
+            <div class="dir-c-logo">LifePilot</div>
+            <div class="dir-c-avatar">LJ</div>
+          </div>
+          <div class="dir-c-hero">
+            <div class="dir-c-hero-eyebrow">Thursday · 14 May</div>
+            <div class="dir-c-hero-title">
+              I noticed something you might want to know about <em>this week's pattern.</em>
+            </div>
+          </div>
+          <div class="dir-c-cards">
+            <div class="dir-c-card">
+              <div class="dir-c-card-header">
+                <span class="dir-c-card-title">Today's check-in</span>
+                <span class="dir-c-card-action">2 min</span>
+              </div>
+              <div class="dir-c-checkin-row">
+                <span class="dir-c-checkin-label">Did the evening walk happen?</span>
+                <span class="dir-c-chip yes">Yes</span>
+                <span class="dir-c-chip no">No</span>
+              </div>
+              <div class="dir-c-checkin-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                <span class="dir-c-checkin-label">How are you feeling right now?</span>
+                <div class="dir-c-mood-row" style="width: 100%;">
+                  <div class="dir-c-mood-dot">😔</div>
+                  <div class="dir-c-mood-dot">😐</div>
+                  <div class="dir-c-mood-dot selected">🙂</div>
+                  <div class="dir-c-mood-dot">😊</div>
+                  <div class="dir-c-mood-dot">🌟</div>
+                </div>
+              </div>
+              <div class="dir-c-checkin-row">
+                <span class="dir-c-checkin-label">Stayed within food budget?</span>
+                <span class="dir-c-chip yes">Yes</span>
+                <span class="dir-c-chip no">No</span>
+              </div>
+              <button class="dir-c-submit">Got it — send to my coach →</button>
+            </div>
+
+            <div class="dir-c-card">
+              <div class="dir-c-card-header">
+                <span class="dir-c-card-title">Your goals</span>
+                <span class="dir-c-card-action">View all</span>
+              </div>
+              <div class="dir-c-goal-row">
+                <span class="dir-c-goal-icon">💪</span>
+                <div class="dir-c-goal-info">
+                  <div class="dir-c-goal-name">8,000 steps daily</div>
+                  <div class="dir-c-goal-progress">5 of 7 days this week</div>
+                  <div class="dir-c-goal-bar-track"><div class="dir-c-goal-bar-fill" style="width: 71%"></div></div>
+                </div>
+              </div>
+              <div class="dir-c-goal-row">
+                <span class="dir-c-goal-icon">💰</span>
+                <div class="dir-c-goal-info">
+                  <div class="dir-c-goal-name">£800 dining budget</div>
+                  <div class="dir-c-goal-progress">£660 used · £140 remaining</div>
+                  <div class="dir-c-goal-bar-track"><div class="dir-c-goal-bar-fill" style="width: 82%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="dir-c-bottom-nav">
+            <div class="dir-c-nav-item active"><span class="dir-c-nav-icon">🏠</span>Today</div>
+            <div class="dir-c-nav-item"><span class="dir-c-nav-icon">🎯</span>Goals</div>
+            <div class="dir-c-nav-item"><span class="dir-c-nav-icon">📖</span>Journey</div>
+            <div class="dir-c-nav-item"><span class="dir-c-nav-icon">👤</span>Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes-section">
+    <h3>Direction C — Design notes</h3>
+    <div class="notes-grid">
+      <div class="note-card">
+        <h4>Personality</h4>
+        <p>Warm, tactile, action-oriented. Designed for the moment when the user opens LifePilot after reading the morning email. Card stack feels like a focused daily ritual.</p>
+        <p class="pros">✓ Best check-in UX — native mobile feel, effortless</p>
+        <p class="cons">↗ Less editorial — the letter metaphor is weaker here</p>
+      </div>
+      <div class="note-card">
+        <h4>Navigation</h4>
+        <p>Bottom tab bar — the universal mobile pattern. Primary green header creates instant brand recognition. Zero learning curve on mobile.</p>
+        <p class="pros">✓ Perfect for thumb navigation; one-hand usable</p>
+        <p class="cons">↗ Less natural on desktop — requires layout adaptation</p>
+      </div>
+      <div class="note-card">
+        <h4>Information hierarchy</h4>
+        <p>Check-in first, goals second. Optimised for the 90-second daily ritual. Goal progress bars give at-a-glance status without a dashboard.</p>
+        <p class="pros">✓ Daily check-in habit friction reduced to near zero</p>
+        <p class="cons">↗ Briefing prose is reduced to a teaser — less coach-voice</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ COACH'S OBSERVATION ═══════════════════════════════════ -->
+<div id="panel-obs" class="direction-panel">
+  <div class="direction-meta">
+    <div>
+      <h2>Coach's Observation — Pattern Preview</h2>
+      <p class="tagline">A distinct message type that appears at most once per week. Visually quieter than a briefing. One open question, no CTA. Shown here in Direction A context.</p>
+      <div class="tags">
+        <span class="tag">Warm grey surface</span>
+        <span class="tag">Amber left border</span>
+        <span class="tag">Lora italic</span>
+        <span class="tag">No CTA</span>
+        <span class="tag">One question only</span>
+      </div>
+    </div>
+  </div>
+  <div class="preview-area">
+    <div>
+      <div class="screen-frame desktop">
+        <div class="screen-label">
+          <div class="screen-dots"><div class="screen-dot dot-red"></div><div class="screen-dot dot-yellow"></div><div class="screen-dot dot-green"></div></div>
+          <span class="screen-title-bar">lifepilot.app — Coach's observation (Wednesday)</span>
+        </div>
+        <div class="dir-a">
+          <div class="dir-a-nav">
+            <div class="dir-a-logo">Life<span>Pilot</span></div>
+            <div class="dir-a-nav-links">
+              <div class="dir-a-nav-link active">Today</div>
+              <div class="dir-a-nav-link">Goals</div>
+              <div class="dir-a-nav-link">Journey</div>
+              <div class="dir-a-nav-link">Profile</div>
+            </div>
+            <div class="dir-a-avatar">LJ</div>
+          </div>
+          <div class="dir-a-content">
+            <div class="dir-a-greeting">Wednesday, 13 May 2026</div>
+            <div class="dir-a-headline">I noticed something.</div>
+
+            <div class="coach-obs-example">
+              <div class="coach-obs-eyebrow">From your coach</div>
+              <div class="coach-obs-text">
+                You've been telling me your sleep has been good — seven, sometimes eight hours. But your morning check-ins over the past two weeks have consistently started on a lower mood score than the evenings. You tend to log around a 4 in the morning and a 7 by evening.<br><br>
+                I'm not sure sleep is the whole picture. I'm just curious — what do you think is happening in the mornings?
+              </div>
+            </div>
+
+            <div style="font-family: var(--font-serif); font-size: 14px; color: var(--muted-foreground); font-style: italic; margin-top: 8px;">
+              No action needed. Just something to sit with. Your regular briefing arrives tomorrow morning.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes-section">
+    <h3>Coach's Observation — Design rationale</h3>
+    <div class="notes-grid">
+      <div class="note-card">
+        <h4>Visual distinction</h4>
+        <p>Warm grey background (#EDE8E0) with amber left border. Softer than a briefing card. Signals "this is a different kind of message" without being alarming.</p>
+        <p class="pros">✓ Colour + border + copy pattern = triple distinction</p>
+        <p class="pros">✓ Complies with WCAG colour-independence requirement</p>
+      </div>
+      <div class="note-card">
+        <h4>Copy pattern</h4>
+        <p>Lora serif italic throughout. Opens with observation ("I noticed..."), provides evidence (the data), ends with a single open question. No CTA. No action required.</p>
+        <p class="pros">✓ Curiosity framing — never accusatory</p>
+        <p class="cons">↗ Copy quality critical — weak observations break trust</p>
+      </div>
+      <div class="note-card">
+        <h4>Frequency and timing</h4>
+        <p>Maximum once per week. Always mid-week (Tuesday–Thursday), never Monday morning or Friday. The follow-up note below signals when the normal cadence resumes.</p>
+        <p class="pros">✓ Protects the emotional tempo</p>
+        <p class="pros">✓ Prevents observation fatigue</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showDirection(dir, btn) {
+  document.querySelectorAll('.direction-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + dir).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

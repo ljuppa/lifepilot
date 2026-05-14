@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GoalInputSchema, type GoalInput } from "@/lib/validation/profile";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -148,6 +148,11 @@ export default function GoalsPage() {
   );
 }
 
+const GoalTitleSchema = z.object({
+  title: z.string().min(1, "Please enter a goal title."),
+});
+type GoalTitleInput = z.infer<typeof GoalTitleSchema>;
+
 function AddGoalForm({
   onSaved,
   onCancel,
@@ -163,12 +168,12 @@ function AddGoalForm({
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
-  } = useForm<GoalInput>({
-    resolver: zodResolver(GoalInputSchema),
+  } = useForm<GoalTitleInput>({
+    resolver: zodResolver(GoalTitleSchema),
     mode: "onBlur",
   });
 
-  async function onSubmit(data: GoalInput) {
+  async function onSubmit(data: GoalTitleInput) {
     if (selectedDomain.length === 0) {
       setDomainError("Please select a domain.");
       return;
@@ -178,7 +183,7 @@ function AddGoalForm({
     const res = await fetch("/api/goals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, domain: selectedDomain[0] }),
+      body: JSON.stringify({ title: data.title, domain: selectedDomain[0] }),
     });
 
     if (res.ok) {

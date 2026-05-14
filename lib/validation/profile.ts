@@ -42,17 +42,20 @@ export const ProfileConsentSchema = z.object({
   }),
 });
 
+// Converts empty form strings to undefined so optional number fields pass validation
+const toNum = (v: unknown) => (v === "" ? undefined : v);
+
 export const ProfileUpdateSchema = z.object({
   name: z.string().min(1).optional(),
-  age: z.coerce.number().int().min(18).max(120).optional(),
+  age: z.preprocess(toNum, z.coerce.number().int().min(18).max(120).optional()),
   gender: z.string().optional(),
-  height: z.coerce.number().positive().optional().nullable(),
-  weight: z.coerce.number().positive().optional().nullable(),
+  height: z.preprocess(toNum, z.coerce.number().positive().optional().nullable()),
+  weight: z.preprocess(toNum, z.coerce.number().positive().optional().nullable()),
   location: z.string().optional(),
-  monthly_income: z.coerce.number().min(0).optional().nullable(),
-  fixed_expenses: z.coerce.number().min(0).optional().nullable(),
-  discretionary_budget: z.coerce.number().min(0).optional().nullable(),
-  briefing_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  monthly_income: z.preprocess(toNum, z.coerce.number().min(0).optional().nullable()),
+  fixed_expenses: z.preprocess(toNum, z.coerce.number().min(0).optional().nullable()),
+  discretionary_budget: z.preprocess(toNum, z.coerce.number().min(0).optional().nullable()),
+  briefing_time: z.preprocess(toNum, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   timezone: z.string().optional(),
 });
 

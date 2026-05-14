@@ -190,8 +190,84 @@ This document provides the complete epic and story breakdown for LifePilot, deco
 
 ### FR Coverage Map
 
-*(To be populated in step-02-design-epics)*
+| FR | Epic | Description |
+|---|---|---|
+| FR1 | Epic 1 | Email/password account creation |
+| FR2 | Epic 1 | Email verification before app access |
+| FR3 | Epic 2 | Personal profile configuration |
+| FR4 | Epic 2 | Budget profile configuration |
+| FR5 | Epic 2 | Define 1–3 active life goals |
+| FR6 | Epic 2 | Edit profile and goals at any time |
+| FR7 | Epic 6 | Delete account and all data |
+| FR8 | Epic 4 | Generate personalised daily briefing |
+| FR9 | Epic 4 | View briefing in web app |
+| FR10 | Epic 4 | Receive briefing via email at configured time |
+| FR11 | Epic 4 | Configure briefing delivery time |
+| FR12 | Epic 4 | Briefing includes suggestion per active domain |
+| FR13 | Epic 4 | Mark briefing suggestion helpful/not helpful |
+| FR14 | Epic 4 | View briefing history (30 days) |
+| FR15 | Epic 3 | Log daily mood check-in |
+| FR16 | Epic 3 | Log health metric per check-in |
+| FR17 | Epic 3 | Log finance metric per check-in |
+| FR18 | Epic 3 | Log wellness metric per check-in |
+| FR19 | Epic 3 | Offline check-in queue + sync |
+| FR20 | Epic 5 | View progress toward each active goal |
+| FR21 | Epic 5 | View consecutive check-in streak |
+| FR22 | Epic 5 | Detect 48h inactivity and send nudge |
+| FR23 | Epic 5 | View weekly summary of check-ins and briefings |
+| FR24 | Epic 5 | Re-engagement email after 48h without check-in |
+| FR25 | Epic 5 | Configure email notification preferences |
+| FR26 | Epic 5 | Unsubscribe from non-critical emails |
+| FR27 | Epic 6 | Export all personal data |
+| FR28 | Epic 6 | View data summary |
+| FR29 | Epic 2 | Explicit consent during onboarding |
+| FR30 | Epic 7 | Operator aggregate platform metrics |
+| FR31 | Epic 7 | Operator per-user email delivery status |
+| FR32 | Epic 7 | Operator system-wide broadcast |
 
 ## Epic List
 
-*(To be populated in step-02-design-epics)*
+### Epic 1: Foundation & Authenticated Access
+Users can create an account, verify their email, and sign in securely to a deployed web app. This epic produces the working Next.js scaffold, database schema, CI/CD pipeline, design token system, and auth flow that all subsequent epics depend on.
+
+**FRs covered:** FR1, FR2
+**ARCH covered:** ARCH1, ARCH2, ARCH3, ARCH4, ARCH6, ARCH14
+**UX covered:** UX-DR1, UX-DR2, UX-DR3, UX-DR17, UX-DR20
+
+### Epic 2: Life Profile & Goal Configuration
+Users can complete a conversational onboarding wizard — entering their personal profile, budget basics, and 1–3 life goals across health, finance, and wellness — and edit any of this at any time. Users provide explicit data consent during onboarding.
+
+**FRs covered:** FR3, FR4, FR5, FR6, FR29
+**ARCH covered:** ARCH8
+**UX covered:** UX-DR7, UX-DR8, UX-DR11, UX-DR13, UX-DR14, UX-DR15
+
+### Epic 3: Daily Check-In
+Users can log a daily check-in — mood, one health metric, one finance metric, one wellness metric — in under 90 seconds, with offline support that syncs on reconnect.
+
+**FRs covered:** FR15, FR16, FR17, FR18, FR19
+**UX covered:** UX-DR6, UX-DR12
+
+### Epic 4: Daily Briefing Engine
+Users receive a personalised AI-generated daily briefing via email at their configured time, can view it in the web app, mark suggestions as helpful/not helpful, and browse their 30-day briefing history. The AI pipeline uses Claude Haiku with prompt caching, a safety filter, and mandatory AI disclosure.
+
+**FRs covered:** FR8, FR9, FR10, FR11, FR12, FR13, FR14
+**ARCH covered:** ARCH5, ARCH9, ARCH16, ARCH17
+**UX covered:** UX-DR4, UX-DR5, UX-DR9, UX-DR16
+
+### Epic 5: Goal Progress, Insights & Re-engagement
+Users can track progress toward each active goal, see their check-in streak, view a weekly summary, and receive a gentle coach-voice nudge after 48h inactivity. Users control which notification types they receive and can unsubscribe from non-critical emails.
+
+**FRs covered:** FR20, FR21, FR22, FR23, FR24, FR25, FR26
+**ARCH covered:** ARCH12
+**UX covered:** UX-DR10, UX-DR18, UX-DR19
+
+### Epic 6: Privacy, Data Control & Compliance
+Users can export all their data, view a data summary, and delete their account with all associated data. The platform automatically enforces GDPR retention limits and maintains an append-only audit log.
+
+**FRs covered:** FR7, FR27, FR28
+**ARCH covered:** ARCH10, ARCH11, ARCH13, ARCH15, ARCH18
+
+### Epic 7: Administration & Operations
+Operators can view aggregate platform health metrics, look up per-user email delivery status, and send system-wide announcements — without accessing any personal health or financial data.
+
+**FRs covered:** FR30, FR31, FR32

@@ -271,3 +271,113 @@ Users can export all their data, view a data summary, and delete their account w
 Operators can view aggregate platform health metrics, look up per-user email delivery status, and send system-wide announcements — without accessing any personal health or financial data.
 
 **FRs covered:** FR30, FR31, FR32
+
+---
+
+## Epic 1: Foundation & Authenticated Access
+
+Users can create an account, verify their email, and sign in securely to a deployed web app. The working Next.js scaffold, CI/CD pipeline, design token system, and auth flow are in place for all subsequent epics to build on.
+
+### Story 1.1: Project Scaffold & Deployment Foundation
+
+As a developer,
+I want the project initialized, CI/CD configured, and a hello-world app deployed to Vercel with design tokens and accessibility baseline in place,
+So that all subsequent feature stories have a stable, testable, deployable foundation to build on.
+
+**Acceptance Criteria:**
+
+**Given** the project does not yet exist
+**When** `npx create-next-app -e with-supabase lifepilot` and `npx shadcn@latest init` are run
+**Then** the project builds without errors (`next build` exits 0) and `tsc --noEmit`, `eslint .`, and `vitest run` all pass
+
+**Given** the project is created
+**When** `globals.css` is updated with design tokens
+**Then** CSS custom properties include `--background: 40 30% 98%`, `--foreground: 220 15% 20%`, `--primary: 152 35% 42%`, `--accent: 35 80% 58%`, `--coach-observation: 40 25% 92%`, `--radius: 0.75rem`; Inter and Lora are loaded via `next/font` and applied per the typography spec
+
+**Given** the repo is on GitHub
+**When** a PR is opened to `main`
+**Then** `.github/workflows/ci.yml` runs: lint → type-check → `vitest run` → `npm audit --audit-level=high` → Snyk scan; all steps must pass before merge is unblocked; Vercel creates a preview deployment and posts its URL to the PR
+
+**Given** any page loads
+**When** a keyboard user tabs into the page
+**Then** a skip link `<a href="#main-content">Skip to content</a>` is the first focusable element in the DOM and becomes visible on focus
+
+**Given** a user visits from an EU country (detected via `x-vercel-ip-country` header)
+**When** the root layout renders
+**Then** `CookieConsentBanner` (react-cookie-consent) is displayed before any non-essential cookies are set; on acceptance, an `audit_logs` row is inserted with `event_type: 'cookie_consent'` and `user_id: null`; the `audit_logs` migration creates the table as append-only, indexed on `(user_id, event_type)`
+
+**Given** `.env.example` is committed
+**When** a developer clones the repo
+**Then** all required environment variable keys are present with placeholder values; `.env.local` is listed in `.gitignore`; no real secrets appear in any committed file
+
+### Story 1.2: User Sign-Up with Email & Password
+
+As a new user,
+I want to create an account with my email and password,
+So that I have a personal, secure account to begin configuring my life profile.
+
+**Acceptance Criteria:**
+
+**Given** I visit `/sign-up`
+**When** I submit a valid email and a password of 8+ characters with the age confirmation checkbox checked
+**Then** Supabase Auth creates my user record, a verification email is dispatched, and I see a "Check your inbox" screen displaying the email address I registered with
+
+**Given** I submit an email that is already registered
+**When** the server responds
+**Then** an inline field error reads "An account with this email already exists — try signing in." No raw Supabase error is exposed
+
+**Given** I enter a password shorter than 8 characters
+**When** I move focus away from the password field
+**Then** react-hook-form/Zod validation displays "Password must be at least 8 characters" beneath the field before I submit
+
+**Given** I have not checked the age confirmation checkbox
+**When** I attempt to submit the form
+**Then** the form cannot be submitted and a validation message reads "Please confirm you are 18 or older"
+
+**Given** the same IP submits more than 5 sign-up requests within 15 minutes
+**When** the 6th request arrives
+**Then** the server returns HTTP 429: `{ "error": { "code": "RATE_LIMITED", "message": "Too many sign-up attempts — please wait 15 minutes." } }`
+
+**Given** a network error occurs during form submission
+**When** the request fails
+**Then** an amber banner reads "Couldn't create your account — tap to try again." and the form retains the user's input
+
+### Story 1.3: Email Verification & Authenticated Sign-In
+
+As a registered user,
+I want to verify my email and sign in to the app,
+So that I can access my protected dashboard securely.
+
+**Acceptance Criteria:**
+
+**Given** I clicked the verification link in my signup email
+**When** `GET /auth/callback` processes the token
+**Then** Supabase Auth exchanges it for a session, a secure `httpOnly` session cookie is set (SameSite=Lax), and I am redirected to `/dashboard`
+
+**Given** I click a verification link older than 24 hours
+**When** the callback route processes it
+**Then** I see "That link has expired — we've sent you a new one." and a fresh verification email is dispatched automatically
+
+**Given** I visit `/sign-in` with a verified account
+**When** I submit correct email and password
+**Then** my session cookie is set and I am redirected to `/dashboard`; the password is never logged or exposed in error responses
+
+**Given** I submit incorrect credentials
+**When** the server responds
+**Then** the error reads "Email or password is incorrect." — no indication of which field is wrong; the password field is cleared; the email field retains my input
+
+**Given** the sign-in endpoint receives 5+ failed attempts from the same IP within 15 minutes
+**When** the 6th attempt arrives
+**Then** the server returns HTTP 429: `{ "error": { "code": "RATE_LIMITED", "message": "Too many sign-in attempts — please wait 15 minutes." } }`
+
+**Given** I am not signed in
+**When** I navigate to any protected route (`/dashboard`, `/checkin`, `/goals`, `/profile`, `/settings`, `/data`)
+**Then** Next.js middleware redirects me to `/sign-in?redirect=[original-path]`; after successful sign-in I am redirected back to my original destination
+
+**Given** I am signed in and click "Sign out"
+**When** the sign-out action completes
+**Then** the session cookie is invalidated server-side, I am redirected to `/sign-in`, and navigating to a protected route redirects me to `/sign-in` again
+
+**Given** my session has been inactive for 7 days
+**When** I attempt to access any protected route
+**Then** middleware detects the expired session and redirects me to `/sign-in`

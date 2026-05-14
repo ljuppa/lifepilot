@@ -475,3 +475,81 @@ So that my AI coach always reflects my current situation and priorities.
 **Given** any `/api/profile` or `/api/goals` route handler is called
 **When** the handler runs
 **Then** `createServerClient()` is called first, `supabase.auth.getUser()` is verified, and all DB queries use `user.id` — never a client-supplied `userId`; unauthenticated calls return HTTP 401: `{ "error": { "code": "UNAUTHORIZED", "message": "Not authenticated" } }`
+
+---
+
+## Epic 3: Daily Check-In
+
+Users can log a daily check-in — mood, one health metric, one finance metric, one wellness metric — in under 90 seconds, with offline support that syncs on reconnect.
+
+### Story 3.1: Daily Check-In Form
+
+As a signed-in user,
+I want to log my daily mood, health metric, finance metric, and wellness metric in a single scrollable screen that takes under 90 seconds,
+So that my AI coach has up-to-date data to personalise tomorrow's briefing.
+
+**Acceptance Criteria:**
+
+**Given** I tap the Check-in tab or "Log today's check-in" CTA from the Today view
+**When** the check-in opens
+**Then** on mobile it slides up as a full-screen bottom Sheet; on desktop it opens as a centred card; a `CoachVoiceLine` reads "How's it going today, [name]?" as the first element
+
+**Given** the check-in is open
+**When** the `MoodSelector` renders
+**Then** five 44×44px circular touch targets appear in a horizontal row with an amber-to-sage colour scale; selecting one fills the circle and scales it to 1.15×; `role="radiogroup"` with `aria-label="How are you feeling today?"`; each dot labelled "Mood [n] of 5"; arrow key navigation works
+
+**Given** I have 1–3 active goals
+**When** the domain metric section renders
+**Then** only metrics matching my active goal domains appear — health: `Slider` (value in kg with live label above thumb), finance: `Input[type="number"]` (daily spend with currency unit inline), wellness: `Slider` (sleep hours 0–12); each group has a "Skip" ghost button; units shown inline, never in placeholder text
+
+**Given** I fill in metrics and reach the optional note field
+**When** I type
+**Then** the field accepts up to 80 characters; a character count "(x/80)" is shown; tapping "Skip" submits without the note
+
+**Given** I tap "Complete check-in"
+**When** `POST /api/checkin` succeeds
+**Then** a `checkins` row is inserted with `user_id`, `mood`, domain metric values, optional note, and `checked_in_at` (ISO timestamp); the Sheet closes; a `CoachVoiceLine` closing variant reads "Got it — I'll adjust tomorrow's briefing." for 2 seconds then returns to the Today view; no streak counter, no score, no confetti
+
+**Given** I have already submitted a check-in today (same calendar day in my timezone)
+**When** I open the check-in
+**Then** a CoachVoiceLine reads "You've already checked in today — see you tomorrow!" with the time of my last check-in
+
+**Given** the `checkins` Supabase migration is applied
+**When** any route reads or writes the `checkins` table
+**Then** RLS enforces `user_id = auth.uid()` on all operations; `CheckinSchema` Zod in `lib/validation/checkin.ts` validates the request body before any DB call
+
+**Given** the submit button is tapped
+**When** the request is in flight
+**Then** the button shows a spinner and label changes to "Saving…"; the button is disabled to prevent double-submission
+
+### Story 3.2: Offline Check-In Queue & Sync
+
+As a signed-in user with intermittent connectivity,
+I want my completed check-in saved locally when I'm offline and synced automatically when I reconnect,
+So that I never lose check-in data due to a temporary network outage.
+
+**Acceptance Criteria:**
+
+**Given** I submit the check-in form
+**When** `navigator.onLine === false` or the `POST /api/checkin` request fails with no HTTP response
+**Then** the check-in data is serialised to `localStorage` under key `lifepilot_checkin_queue` as a JSON array; an amber banner reads "Saved offline — will sync when you're back online"
+
+**Given** a check-in is queued in `localStorage`
+**When** the `window online` event fires
+**Then** the app automatically retries `POST /api/checkin` for each queued item in order; on each success the item is removed from the queue
+
+**Given** a queued check-in syncs successfully
+**When** the sync completes
+**Then** the amber banner updates to "Check-in synced!" for 2 seconds then dismisses
+
+**Given** a queued check-in fails to sync after 3 retry attempts (exponential backoff: 2s, 4s, 8s)
+**When** all retries are exhausted
+**Then** the item remains in the queue and a persistent amber banner reads "Check-in couldn't sync — tap to retry" with a manual "Retry" button
+
+**Given** the user opens the check-in form while an unsynced queued item exists
+**When** the form opens
+**Then** a CoachVoiceLine reads "You have a check-in from [time] waiting to sync — sync it now or replace it?"; two buttons appear: "Sync now" (primary) and "Replace" (secondary ghost, discards queued item and opens a fresh form)
+
+**Given** a queued item is older than 24 hours (date mismatch — cannot post as today's check-in)
+**When** sync is attempted
+**Then** the server rejects it with HTTP 422; the item is removed from the queue silently (the data is stale and unrecoverable)

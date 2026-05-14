@@ -553,3 +553,259 @@ So that I never lose check-in data due to a temporary network outage.
 **Given** a queued item is older than 24 hours (date mismatch — cannot post as today's check-in)
 **When** sync is attempted
 **Then** the server rejects it with HTTP 422; the item is removed from the queue silently (the data is stale and unrecoverable)
+
+---
+
+## Epic 4: Daily Briefing Engine
+
+Users receive a personalised AI-generated daily briefing via email at their configured time, can view it as a card stack in the web app, mark suggestions as helpful/not helpful, and browse their 30-day briefing history.
+
+### Story 4.1: Briefing Generation & Email Delivery Pipeline
+
+As an active user with a configured profile and goals,
+I want to receive a personalised AI-generated daily briefing via email at my configured time,
+So that I start each day with specific, actionable guidance without having to open any app.
+
+**Acceptance Criteria:**
+
+**Given** a user's configured `briefing_time` is reached (in their timezone)
+**When** the Inngest cron fires
+**Then** a `briefing/generate.requested` event is emitted with `{ userId, triggeredAt }` and the `generateBriefing` function begins execution
+
+**Given** the function is running
+**When** it fetches context
+**Then** it retrieves user profile + active goals + last 7 days of `checkins` rows via `createServerClient()` using the stored `user_id` — no client-supplied identity
+
+**Given** context is fetched
+**When** `buildBriefingPrompt()` in `lib/claude/prompts.ts` assembles the request
+**Then** the system prompt prefix (role, JSON output format, safety rules, AI disclosure) is sent with Anthropic prompt caching headers; the dynamic user block contains profile snapshot, active goals, last 7 check-ins, today's date and day of week; target ≥ 80% input token cost reduction on cached portion
+
+**Given** the prompt is assembled
+**When** Claude Haiku is called via `lib/claude/client.ts`
+**Then** the response is structured JSON with one suggestion object per active goal domain; the Claude Haiku model ID is hardcoded (not Sonnet); LLM spend alert is set at $10/month in the Anthropic console
+
+**Given** the LLM returns a response
+**When** `filterLlmOutput()` in `lib/claude/safety.ts` runs
+**Then** it blocks caloric thresholds below 1,200, "stop eating" language, specific investment recommendations, and harmful content patterns via a single-pass string filter; if triggered, content is replaced with a safe fallback and `safety_filter_triggered: true` is set on the briefing record; no secondary LLM call is made
+
+**Given** the briefing content passes or is filtered
+**When** the briefing is stored
+**Then** a `briefings` row is inserted with `user_id`, `content` (JSON), `briefing_date`, `email_status: 'pending'`, and `safety_filter_triggered`; RLS enforces `user_id = auth.uid()` on all SELECT operations
+
+**Given** the briefing is stored
+**When** the email is built via `lib/email/templates/briefing.ts`
+**Then** it is plain HTML with inline CSS; subject line format is "Your [Weekday] — [one-line focus preview]"; opening is a personalised prose paragraph (Lora font); body contains one suggestion per active goal domain; a single CTA button "Log today's check-in" deep-links to `/checkin`; sign-off reads "That's your [Weekday], [Name]. Make it count."; footer includes "✦ AI-generated — not medical, nutritional, or financial advice."; a plain-text alternative is included on every send
+
+**Given** the email is sent via `lib/email/resend.ts`
+**When** Resend confirms delivery
+**Then** `email_status` is updated to `'delivered'`; the briefing remains readable in-app regardless of email status
+
+**Given** Resend returns an error
+**When** delivery fails
+**Then** `email_status` is updated to `'failed'`; the failure is logged as structured JSON with `{ userId, event: 'email_delivery_failed', code }` — no email address or content in log fields
+
+**Given** the Inngest function fails at any step
+**When** the failure occurs
+**Then** Inngest retries up to 3 times with exponential backoff; after all retries exhausted the job is marked failed in the Inngest dashboard; any already-stored briefing record remains accessible in-app
+
+**Given** `POST /api/inngest` receives a webhook event
+**When** the request arrives
+**Then** the Inngest signing key is verified before any handler runs; the route is the single entry point for all background jobs
+
+### Story 4.2: Today View & Briefing Display
+
+As a signed-in user,
+I want to view today's AI-generated briefing in the web app as a card stack,
+So that I can read and act on my daily coaching content even if I don't open my email.
+
+**Acceptance Criteria:**
+
+**Given** I am signed in and have completed onboarding
+**When** I land on `/dashboard`
+**Then** today's briefing card stack is the primary content — not a metrics dashboard; the route is a React Server Component that fetches the briefing server-side (LCP target < 3s)
+
+**Given** today's briefing exists
+**When** the briefing renders
+**Then** a `BriefingCard` greeting variant appears first (Lora serif, coach voice opening, no domain badge); one `BriefingCard` suggestion variant follows per active goal domain (domain badge colour-coded: health sage / finance amber / wellness slate; Lora prose body 40–80 words; optional inline action link); all `BriefingCard` components are wrapped in `AiDisclosureWrapper` rendering a non-dismissible footer "✦ AI-generated — not medical, nutritional, or financial advice."
+
+**Given** the weekly `CoachesObservation` is due (at most once per 7 days, never on Monday morning)
+**When** the Today view renders
+**Then** a `CoachesObservation` card appears below suggestion cards — `bg-[#EDE8E0]` surface, 4px amber left border, Lora italic body, "Coach's Observation" label (Inter 11px uppercase amber), one open question, no CTA, no feedback icons; `role="note"`, `aria-label="Coach's Observation"`
+
+**Given** today's briefing does not yet exist
+**When** the Today view renders
+**Then** a skeleton card (`animate-pulse`, `bg-[#EDE8E0]`) is shown for a minimum of 300ms; then a `CoachVoiceLine` empty state appears: "Your briefing is generating — check back in a few minutes." or on the first day: "Your first briefing arrives tomorrow at [configured time]."
+
+**Given** the page loads on mobile (< 768px)
+**When** the card stack renders
+**Then** cards are full-width, single-column, vertically stacked; on tablet/desktop they are centred with a 680px max-width
+
+**Given** the `briefings` table RLS is in place
+**When** the RSC fetches the briefing
+**Then** only the authenticated user's briefing for today is returned; no other user's data is accessible
+
+### Story 4.3: Briefing History & Helpfulness Feedback
+
+As a signed-in user,
+I want to browse my last 30 days of briefings and mark suggestions as helpful or not helpful,
+So that I can review my coaching history and signal to the AI what is working for me.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/briefing`
+**When** the page loads
+**Then** my last 30 briefings are listed ordered by date descending; each row shows: date, first 100 characters of opening prose, email delivery status badge; skeleton loading shown during fetch; `GET /api/briefing` filters server-side to `briefing_date >= (today − 30 days)`
+
+**Given** no briefings exist yet
+**When** the history page loads
+**Then** a `CoachVoiceLine` reads "Your briefing history will appear here. Check back after your first briefing."
+
+**Given** I tap a briefing entry
+**When** I navigate to `/briefing/[id]`
+**Then** the full briefing card stack renders using the same `BriefingCard` and `AiDisclosureWrapper` components as the Today view; `GET /api/briefing/[id]` returns the single briefing for the authenticated user
+
+**Given** I am viewing a `BriefingCard` suggestion variant
+**When** I hover or focus the card
+**Then** two ghost icon buttons appear: "Mark as helpful" (thumb up) and "Mark as not helpful" (thumb down); each has `aria-label`; minimum 44×44px touch target
+
+**Given** I tap a helpfulness button
+**When** `PATCH /api/briefing/[id]` succeeds with `{ helpful: true | false }`
+**Then** the selected icon fills with the domain colour; the other icon dims; the rating persists on page reload
+
+**Given** a briefing was previously rated
+**When** I open it again
+**Then** the previously selected icon is pre-filled from the `briefings` table `helpful` column
+
+**Given** any `/api/briefing` route handler runs
+**When** the handler executes
+**Then** session is verified first; all queries use `user.id`; responses follow `{ data: ... }` or `{ error: ... }`; unauthenticated requests return HTTP 401
+
+---
+
+## Epic 5: Goal Progress, Insights & Re-engagement
+
+Users can track progress toward each active goal, see their check-in streak, view a weekly summary, and receive a gentle coach-voice nudge after 48h inactivity. Users control which notification types they receive and can unsubscribe from non-critical emails.
+
+### Story 5.1: Goal Progress & Check-In Streak
+
+As a signed-in user,
+I want to view my progress toward each active goal and my consecutive check-in streak,
+So that I can see how I'm tracking against my targets and feel motivated to check in daily.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/goals`
+**When** the page loads
+**Then** each active goal is listed with: a `DomainChip` display label, goal title, a `Progress` bar (shadcn) showing current vs target value, and a `StreakBadge` in the page header; skeleton loading is shown during fetch
+
+**Given** the `StreakBadge` renders
+**When** my consecutive check-in count is computed server-side
+**Then** the badge shows a Lucide flame icon (16px amber) + streak count + "day streak" label in `bg-amber-50 border border-amber-200 rounded-full`; zero state shows greyed flame + "Start your streak"; milestone states (7, 30, 100 days) trigger a brief pulse animation on load that respects `prefers-reduced-motion`; `aria-label="[n] day streak"`
+
+**Given** `GET /api/goals/[id]/progress` is called
+**When** the server computes the streak
+**Then** it counts consecutive calendar days with a `checkins` row ending today (in the user's timezone); if today has no check-in yet, the streak equals yesterday's count — the streak is not broken until tomorrow
+
+**Given** I tap a goal
+**When** I navigate to `/goals/[id]`
+**Then** the detail view shows: goal title, domain, target value, current value (derived from the most recent check-in for that domain metric), progress bar, streak badge, and an "Edit goal" button
+
+**Given** progress is computed
+**When** `GET /api/goals/[id]/progress` responds
+**Then** it returns `{ data: { currentValue, targetValue, streakCount, percentComplete } }`; health progress = most recent weight vs target weight; finance progress = cumulative daily spend this month vs monthly budget target; wellness progress = 7-day average sleep hours vs target; session verified first; RLS enforced at DB level
+
+**Given** the goals list is empty
+**When** the page renders
+**Then** a `CoachVoiceLine` reads "You haven't set any goals yet. Let's start with one — what do you most want to change this month?" with an "Add a goal" primary button
+
+### Story 5.2: Weekly Summary
+
+As a signed-in user,
+I want to view a weekly summary of my check-in data and briefing history,
+So that I can reflect on my week and see patterns across my goals.
+
+**Acceptance Criteria:**
+
+**Given** I am on the `/goals` page
+**When** the weekly summary section renders
+**Then** it shows for the current ISO week (Monday–Sunday in my timezone): days checked in (e.g. "5 of 7 days"), briefings received count, and per-domain average metric values (average mood, average sleep hours, total daily spend)
+
+**Given** `GET /api/checkins/summary` is called
+**When** the server queries the current week's data
+**Then** it filters `checkins` where `checked_in_at` falls within the current ISO week in the user's timezone; aggregates are computed server-side; session verified; RLS enforced; response: `{ data: { daysCheckedIn, briefingsReceived, domainAverages: { health, finance, wellness } } }`
+
+**Given** I have fewer than 3 check-ins for the week
+**When** the summary section renders
+**Then** a `CoachVoiceLine` reads "Check in a few more times this week to see your summary."
+
+**Given** the summary section is loading
+**When** data is in flight
+**Then** a skeleton placeholder matching the section height is shown; content appears without layout shift
+
+### Story 5.3: Inactivity Detection & Re-engagement Email
+
+As a user who has gone quiet,
+I want to receive a gentle coach-voice nudge email after 48 hours without a check-in,
+So that I'm reminded to re-engage without feeling judged or guilty.
+
+**Acceptance Criteria:**
+
+**Given** an Inngest scheduled job (`checkInactivity`) runs every hour
+**When** it queries Supabase
+**Then** it identifies users where: the most recent `checkins.checked_in_at < (now − 48 hours)` AND (`last_reengagement_sent_at IS NULL` OR `last_reengagement_sent_at < (now − 7 days)`) AND profile is complete AND notification preference for re-engagement is enabled
+
+**Given** an inactive user is identified
+**When** a `notification/reengagement.triggered` Inngest event is emitted
+**Then** the payload is `{ userId, triggeredAt, goalTitle }` — no PII beyond `userId` in the event payload
+
+**Given** the `sendReengagement` function runs
+**When** it builds the email via `lib/email/templates/reengagement.ts`
+**Then** subject is "[First name], still here for you"; body contains one empathy sentence + specific goal mention ("Still working toward [goal title]?") + single CTA "Update my goals" deep-linking to `/goals`; plain-text alternative included; physical mailing address in footer (CAN-SPAM); no streak counter; no guilt framing
+
+**Given** the re-engagement email is sent
+**When** Resend confirms delivery
+**Then** `profiles.last_reengagement_sent_at` is updated to `now`; a `notifications` row is inserted with `user_id`, `notification_type: 'reengagement'`, `sent_at`, `email_status: 'delivered'`; no further re-engagement is sent for 7 days
+
+**Given** the `/goals` deep link in the email is tapped
+**When** the user is unauthenticated
+**Then** they are redirected to `/sign-in?redirect=/goals`; after sign-in they land on `/goals` directly
+
+**Given** the Inngest function logs its activity
+**When** it writes to the console
+**Then** structured JSON contains `{ userId, event: 'reengagement_sent' }` — no email address or goal details in log fields
+
+### Story 5.4: Notification Preferences & Unsubscribe
+
+As a signed-in user,
+I want to control which email notifications I receive and unsubscribe from non-critical emails in one click,
+So that I only receive communications that are useful to me.
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/settings`
+**When** the Notifications section renders
+**Then** I see toggles for: "Daily briefing emails" (default on) and "Re-engagement nudge emails" (default on); each toggle has a label and a brief description; changes save immediately on toggle (no save button needed)
+
+**Given** I toggle a notification preference
+**When** `PATCH /api/notifications` is called with `{ briefingEmails: boolean, reengagementEmails: boolean }`
+**Then** `NotificationPreferencesSchema` Zod validates the body; preferences are stored in a `notification_preferences` JSONB column on `profiles`; response is `{ data: { updated: true } }`
+
+**Given** the briefing or re-engagement Inngest function runs for a user
+**When** it checks preferences before sending
+**Then** if the relevant preference is `false` the send is skipped and `email_status: 'skipped_preference'` is recorded on the `notifications` or `briefings` row; no email is dispatched
+
+**Given** every outgoing email is sent
+**When** the email template is built
+**Then** the footer includes a one-click unsubscribe link: `/api/unsubscribe?token=[HMAC]` where token = `HMAC-SHA256(userId + ':' + email)` signed with `UNSUBSCRIBE_SECRET` env var
+
+**Given** I click the unsubscribe link in an email
+**When** `GET /api/unsubscribe?token=[token]` is called (unauthenticated route)
+**Then** the server validates the HMAC; if valid, all non-critical email preferences are set to `false` and an `audit_logs` row is written with `event_type: 'unsubscribe'` and `user_id`; the response is a plain HTML confirmation: "You've been unsubscribed. You can re-enable notifications in your settings anytime."
+
+**Given** the unsubscribe token is invalid or tampered
+**When** `GET /api/unsubscribe` is called
+**Then** the server returns HTTP 400 with a plain HTML page: "This unsubscribe link is invalid or has expired."
+
+**Given** critical emails are triggered (data export download link, account deletion confirmation, breach notification)
+**When** those functions send email
+**Then** they bypass notification preferences entirely — critical emails are always delivered regardless of preference settings

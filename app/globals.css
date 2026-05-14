@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* LifePilot Design Tokens — UX-DR1 */
+:root {
+  /* Core palette */
+  --background: 40 30% 98%;         /* warm off-white #FAF9F6 */
+  --foreground: 220 15% 20%;        /* deep charcoal #2D3142 */
+  --primary: 152 35% 42%;           /* muted sage #46876A */
+  --primary-foreground: 0 0% 98%;
+  --secondary: 40 20% 94%;
+  --secondary-foreground: 220 15% 20%;
+  --accent: 35 80% 58%;             /* warm amber #E8923A */
+  --accent-foreground: 0 0% 98%;
+  --coach-observation: 40 25% 92%;  /* warm grey surface #EDE8E0 */
+  --muted: 40 20% 94%;
+  --muted-foreground: 220 10% 45%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 40 20% 88%;
+  --input: 40 20% 88%;
+  --ring: 152 35% 42%;              /* sage focus ring */
+  --radius: 0.75rem;
+
+  /* Semantic rules (UX-DR1) */
+  --card: 0 0% 100%;
+  --card-foreground: 220 15% 20%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 15% 20%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-coach-observation: hsl(var(--coach-observation));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --border-radius: var(--radius);
+
+  /* UX-DR2: Typography — Inter for UI chrome, Lora for coach voice */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-serif: var(--font-lora), Georgia, serif;
+}
+
+/* Accessibility: visible focus ring — UX-DR17 */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Remove focus ring suppression */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+}
+
+/* UX-DR2: Briefing prose — Lora serif, body-lg */
+.prose-briefing {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1.7;
+  max-width: 65ch;
+}
+
+/* Coach observation surface — UX-DR9 */
+.coach-observation-surface {
+  background-color: hsl(var(--coach-observation));
+  border-left: 4px solid hsl(var(--accent));
+}

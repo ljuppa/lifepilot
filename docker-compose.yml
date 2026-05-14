@@ -1,10 +1,17 @@
+# IMPORTANT: Docker Compose does NOT auto-read .env.local for build arg substitution.
+# Always start with:
+#   docker compose --env-file .env.local up --build
+#
+# Subsequent runs (no rebuild needed):
+#   docker compose --env-file .env.local up
+
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        # Public vars baked in at build time (required by Next.js)
+        # NEXT_PUBLIC_ vars must be present at build time (Next.js inlines them)
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     ports:

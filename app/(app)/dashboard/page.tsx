@@ -5,35 +5,8 @@ import { BriefingCard } from "@/components/briefing/BriefingCard";
 import { CoachesObservation } from "@/components/briefing/CoachesObservation";
 import { BriefingCardSkeleton } from "@/components/briefing/BriefingCardSkeleton";
 import { CoachVoiceLine } from "@/components/ui/coach-voice-line";
+import { VALID_DOMAINS, isValidContent, isSafeUrl } from "@/lib/briefing/content";
 import type { Domain } from "@/components/ui/domain-chip";
-
-const VALID_DOMAINS = new Set<string>(["health", "finance", "wellness"]);
-
-interface BriefingSuggestion {
-  domain: string;
-  title: string;
-  body: string;
-  action_link_text?: string | null;
-  action_link_url?: string | null;
-}
-
-interface BriefingContent {
-  greeting: string;
-  suggestions: BriefingSuggestion[];
-  observation?: string | null;
-}
-
-function isValidContent(value: unknown): value is BriefingContent {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return typeof v.greeting === "string" && Array.isArray(v.suggestions);
-}
-
-function isSafeUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  const lower = url.toLowerCase().trimStart();
-  return lower.startsWith("/") || lower.startsWith("https://") || lower.startsWith("http://");
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient();

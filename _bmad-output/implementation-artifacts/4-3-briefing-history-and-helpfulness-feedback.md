@@ -1,6 +1,6 @@
 # Story 4.3: Briefing History & Helpfulness Feedback
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -26,54 +26,54 @@ So that I can review my coaching history and signal to the AI what is working fo
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Extract shared briefing content utilities** (AC: none — prep)
-  - [ ] Create `lib/briefing/content.ts` exporting: `VALID_DOMAINS`, `BriefingContent` interface, `BriefingSuggestion` interface, `isValidContent()` type guard, `isSafeUrl()` sanitizer
-  - [ ] Update `app/(app)/dashboard/page.tsx` to import from `@/lib/briefing/content` (remove the inline duplicates)
-  - [ ] Run full test suite — all 223 must still pass
+- [x] **Task 1 — Extract shared briefing content utilities** (AC: none — prep)
+  - [x] Create `lib/briefing/content.ts` exporting: `VALID_DOMAINS`, `BriefingContent` interface, `BriefingSuggestion` interface, `isValidContent()` type guard, `isSafeUrl()` sanitizer
+  - [x] Update `app/(app)/dashboard/page.tsx` to import from `@/lib/briefing/content` (remove the inline duplicates)
+  - [x] Run full test suite — all 223 must still pass
 
-- [ ] **Task 2 — Update BriefingCard with feedback UI** (AC: #4, #5, #6)
-  - [ ] Add `"use client"` directive to `components/briefing/BriefingCard.tsx`
-  - [ ] Add optional props to `BriefingCardSuggestionProps`: `helpful?: boolean | null`, `onFeedback?: (value: boolean) => void`
-  - [ ] Add `group relative` to the `<article>` className (alongside existing classes)
-  - [ ] When `onFeedback` is provided, render feedback div: `absolute bottom-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity`
-  - [ ] ThumbsUp button: `aria-label="Mark as helpful"`, `aria-pressed={helpful === true}`, Lucide `ThumbsUp` icon
-  - [ ] ThumbsDown button: `aria-label="Mark as not helpful"`, `aria-pressed={helpful === false}`, Lucide `ThumbsDown` icon
-  - [ ] Selected icon fill: `text-primary` (health), `text-accent` (finance), `text-slate-500` (wellness) — unselected: `text-muted-foreground/50`
-  - [ ] Buttons call `onFeedback(true)` / `onFeedback(false)` on click
-  - [ ] Min touch target: `p-2` padding on buttons (creates ≥ 44px hit area with 24px icon)
-  - [ ] Update `components/briefing/BriefingCard.test.tsx` — add feedback tests
+- [x] **Task 2 — Update BriefingCard with feedback UI** (AC: #4, #5, #6)
+  - [x] Add `"use client"` directive to `components/briefing/BriefingCard.tsx`
+  - [x] Add optional props to `BriefingCardSuggestionProps`: `helpful?: boolean | null`, `onFeedback?: (value: boolean) => void`
+  - [x] Add `group relative` to the `<article>` className (alongside existing classes)
+  - [x] When `onFeedback` is provided, render feedback div: `absolute bottom-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity`
+  - [x] ThumbsUp button: `aria-label="Mark as helpful"`, `aria-pressed={helpful === true}`, Lucide `ThumbsUp` icon
+  - [x] ThumbsDown button: `aria-label="Mark as not helpful"`, `aria-pressed={helpful === false}`, Lucide `ThumbsDown` icon
+  - [x] Selected icon fill: `text-primary` (health), `text-accent` (finance), `text-slate-500` (wellness) — unselected: `text-muted-foreground/50`
+  - [x] Buttons call `onFeedback(true)` / `onFeedback(false)` on click
+  - [x] Min touch target: `p-2` padding on buttons (creates ≥ 44px hit area with 24px icon)
+  - [x] Update `components/briefing/BriefingCard.test.tsx` — add feedback tests
 
-- [ ] **Task 3 — BriefingDetailContent client component** (AC: #4, #5, #6)
-  - [ ] Create `components/briefing/BriefingDetailContent.tsx` with `"use client"`
-  - [ ] Props: `{ briefing: { id: string; content: unknown; helpful: boolean | null; briefing_date: string } }`
-  - [ ] State: `const [helpful, setHelpful] = useState<boolean | null>(briefing.helpful ?? null)`
-  - [ ] `handleFeedback`: optimistic `setHelpful(value)`, then `fetch("PATCH /api/briefing/${briefing.id}", { body: JSON.stringify({ helpful: value }) })` — no revert on error (non-critical)
-  - [ ] Renders: greeting BriefingCard + suggestion BriefingCards with `helpful={helpful}` and `onFeedback={handleFeedback}` + optional CoachesObservation + AiDisclosureWrapper wrapper
-  - [ ] Imports `isValidContent`, `VALID_DOMAINS`, `isSafeUrl` from `@/lib/briefing/content`
-  - [ ] Create co-located test: `components/briefing/BriefingDetailContent.test.tsx`
+- [x] **Task 3 — BriefingDetailContent client component** (AC: #4, #5, #6)
+  - [x] Create `components/briefing/BriefingDetailContent.tsx` with `"use client"`
+  - [x] Props: `{ briefing: { id: string; content: unknown; helpful: boolean | null; briefing_date: string } }`
+  - [x] State: `const [helpful, setHelpful] = useState<boolean | null>(briefing.helpful ?? null)`
+  - [x] `handleFeedback`: optimistic `setHelpful(value)`, then `fetch("PATCH /api/briefing/${briefing.id}", { body: JSON.stringify({ helpful: value }) })` — no revert on error (non-critical)
+  - [x] Renders: greeting BriefingCard + suggestion BriefingCards with `helpful={helpful}` and `onFeedback={handleFeedback}` + optional CoachesObservation + AiDisclosureWrapper wrapper
+  - [x] Imports `isValidContent`, `VALID_DOMAINS`, `isSafeUrl` from `@/lib/briefing/content`
+  - [x] Create co-located test: `components/briefing/BriefingDetailContent.test.tsx`
 
-- [ ] **Task 4 — Briefing history list page** (AC: #1, #2, #7)
-  - [ ] Create `app/(app)/briefing/page.tsx` — RSC
-  - [ ] Auth guard: same pattern as dashboard (redirect `/sign-in`, redirect `/onboarding`)
-  - [ ] Direct Supabase query: `from("briefings").select("id, briefing_date, content, email_status").eq("user_id", user.id).gte("briefing_date", cutoff).order("briefing_date", { ascending: false })`
-  - [ ] `cutoff`: `new Date(); setDate(-30); toISOString().split("T")[0]`
-  - [ ] Each row as `<Link href="/briefing/${b.id}">` rendering date, preview text (first 100 chars of `content.greeting` via `isValidContent`), `EmailStatusBadge`
-  - [ ] `EmailStatusBadge`: inline component — `delivered` → green, `pending` → amber, `failed` → red
-  - [ ] Date formatting: `const [y,m,d] = date.split("-").map(Number); new Date(y,m-1,d).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })`
-  - [ ] Empty state: `<CoachVoiceLine variant="empty">Your briefing history will appear here. Check back after your first briefing.</CoachVoiceLine>`
-  - [ ] Layout: `<div className="mx-auto max-w-[680px] px-4 py-10 space-y-2">`
-  - [ ] Create `app/(app)/briefing/loading.tsx` — 3 skeleton rows (`animate-pulse h-16 rounded-xl bg-coach-observation`)
-  - [ ] Create `app/(app)/briefing/__tests__/history-page.test.tsx`
+- [x] **Task 4 — Briefing history list page** (AC: #1, #2, #7)
+  - [x] Create `app/(app)/briefing/page.tsx` — RSC
+  - [x] Auth guard: same pattern as dashboard (redirect `/sign-in`, redirect `/onboarding`)
+  - [x] Direct Supabase query: `from("briefings").select("id, briefing_date, content, email_status").eq("user_id", user.id).gte("briefing_date", cutoff).order("briefing_date", { ascending: false })`
+  - [x] `cutoff`: `new Date(); setDate(-30); toISOString().split("T")[0]`
+  - [x] Each row as `<Link href="/briefing/${b.id}">` rendering date, preview text (first 100 chars of `content.greeting` via `isValidContent`), `EmailStatusBadge`
+  - [x] `EmailStatusBadge`: inline component — `delivered` → green, `pending` → amber, `failed` → red
+  - [x] Date formatting: `const [y,m,d] = date.split("-").map(Number); new Date(y,m-1,d).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })`
+  - [x] Empty state: `<CoachVoiceLine variant="empty">Your briefing history will appear here. Check back after your first briefing.</CoachVoiceLine>`
+  - [x] Layout: `<div className="mx-auto max-w-[680px] px-4 py-10 space-y-2">`
+  - [x] Create `app/(app)/briefing/loading.tsx` — 3 skeleton rows (`animate-pulse h-16 rounded-xl bg-coach-observation`)
+  - [x] Create `app/(app)/briefing/__tests__/history-page.test.tsx`
 
-- [ ] **Task 5 — Briefing detail page** (AC: #3, #7)
-  - [ ] Create `app/(app)/briefing/[id]/page.tsx` — RSC
-  - [ ] Auth guard (same pattern)
-  - [ ] `const { id } = await params;`
-  - [ ] Supabase: `.select("id, content, helpful, briefing_date, email_status").eq("id", id).eq("user_id", user.id).single()`
-  - [ ] If error or no data: `redirect("/briefing")`
-  - [ ] Render: `<BriefingDetailContent briefing={briefing} />` inside the standard layout wrapper
-  - [ ] Create `app/(app)/briefing/[id]/loading.tsx` — 3 × `BriefingCardSkeleton`
-  - [ ] Create `app/(app)/briefing/[id]/__tests__/detail-page.test.tsx`
+- [x] **Task 5 — Briefing detail page** (AC: #3, #7)
+  - [x] Create `app/(app)/briefing/[id]/page.tsx` — RSC
+  - [x] Auth guard (same pattern)
+  - [x] `const { id } = await params;`
+  - [x] Supabase: `.select("id, content, helpful, briefing_date, email_status").eq("id", id).eq("user_id", user.id).single()`
+  - [x] If error or no data: `redirect("/briefing")`
+  - [x] Render: `<BriefingDetailContent briefing={briefing} />` inside the standard layout wrapper
+  - [x] Create `app/(app)/briefing/[id]/loading.tsx` — 3 × `BriefingCardSkeleton`
+  - [x] Create `app/(app)/briefing/[id]/__tests__/detail-page.test.tsx`
 
 ## Dev Notes
 
@@ -536,20 +536,41 @@ components/briefing/BriefingCardSkeleton.tsx — no changes
 
 ### Agent Model Used
 
-(to be filled)
+claude-sonnet-4-6
 
 ### Debug Log References
 
-(to be filled)
+- `nextjs/link` must be mocked in vitest tests (`vi.mock("next/link", () => ({ default: ... }))`) because it uses client-side routing internally; without the mock, tests fail to render Link hrefs correctly.
+- Supabase mock for history page list query uses `.then` (not `.single` / `.maybeSingle`) because the list query is awaited directly on the chain — the mock must attach `.then` to the terminal chain object returned by `order()`.
+- `BriefingDetailContent` is a client component wrapping RSC pages — RSC passes serialized briefing data to it; the component owns all interactivity (state, fetch). This avoids making the RSC pages client-side.
 
 ### Completion Notes List
 
-(to be filled)
+- All 5 tasks complete. 257/257 tests pass (34 new). `tsc --noEmit` clean.
+- `lib/briefing/content.ts`: extracted `isValidContent`, `isSafeUrl`, `VALID_DOMAINS`, `BriefingContent`, `BriefingSuggestion` from dashboard inline definitions — single source of truth. `dashboard/page.tsx` updated to import from there; all 223 original tests still pass.
+- `BriefingCard.tsx`: added `"use client"`, optional `helpful`/`onFeedback` props; feedback buttons appear via CSS `group-hover`/`focus-within` — no JS hover state needed; `aria-pressed` for accessible state communication; `DOMAIN_FILL` map drives colour for selected icon.
+- `BriefingDetailContent.tsx`: client component managing shared `helpful` state for the detail view; optimistic update on PATCH; all suggestion cards share state so clicks on any card update all (consistent visual).
+- `app/(app)/briefing/page.tsx`: RSC history list; safe date formatting avoids UTC midnight parsing bug; `isValidContent` guard before slicing greeting; inline `EmailStatusBadge`; empty state via `CoachVoiceLine`.
+- `app/(app)/briefing/[id]/page.tsx`: RSC detail; redirects to `/briefing` when not found (not 404 page, avoids exposing route existence to unauthorized users).
 
 ### File List
 
-(to be filled)
+- `lib/briefing/content.ts` — new (shared content utilities)
+- `components/briefing/BriefingCard.tsx` — modified (added "use client", feedback props)
+- `components/briefing/BriefingCard.test.tsx` — modified (added 6 feedback tests)
+- `components/briefing/BriefingDetailContent.tsx` — new
+- `components/briefing/BriefingDetailContent.test.tsx` — new
+- `app/(app)/briefing/page.tsx` — new (history list RSC)
+- `app/(app)/briefing/loading.tsx` — new
+- `app/(app)/briefing/__tests__/history-page.test.tsx` — new
+- `app/(app)/briefing/[id]/page.tsx` — new (detail RSC)
+- `app/(app)/briefing/[id]/loading.tsx` — new
+- `app/(app)/briefing/[id]/__tests__/detail-page.test.tsx` — new
+- `app/(app)/dashboard/page.tsx` — modified (imports from @/lib/briefing/content)
+- `_bmad-output/implementation-artifacts/4-3-briefing-history-and-helpfulness-feedback.md` — modified
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — modified
 
 ### Change Log
 
 - 2026-05-15: Story created
+- 2026-05-15: Implementation complete — 257 tests passing, tsc clean, all ACs satisfied

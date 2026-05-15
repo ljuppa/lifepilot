@@ -82,7 +82,7 @@ development_status:
   epic-4: in-progress
   4-1-briefing-generation-and-email-delivery-pipeline: done
   4-2-today-view-and-briefing-display: done
-  4-3-briefing-history-and-helpfulness-feedback: ready-for-dev
+  4-3-briefing-history-and-helpfulness-feedback: review
   epic-4-retrospective: optional
 
   # ── Epic 5: Goal Progress, Insights & Re-engagement ──────────────────────

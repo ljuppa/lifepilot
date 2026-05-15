@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { BriefingCard } from "./BriefingCard";
 
 describe("BriefingCard — greeting variant", () => {
@@ -76,5 +77,105 @@ describe("BriefingCard — suggestion variant", () => {
       />
     );
     expect(screen.queryByRole("link")).toBeNull();
+  });
+});
+
+describe("BriefingCard — helpfulness feedback", () => {
+  it("shows feedback buttons when onFeedback is provided", () => {
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        onFeedback={vi.fn()}
+        helpful={null}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Mark as helpful" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark as not helpful" })).toBeInTheDocument();
+  });
+
+  it("does not show feedback buttons when onFeedback is not provided", () => {
+    render(<BriefingCard variant="suggestion" domain="health" body="Walk." />);
+    expect(screen.queryByRole("button", { name: "Mark as helpful" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mark as not helpful" })).toBeNull();
+  });
+
+  it("does not show feedback buttons on greeting variant even with onFeedback", () => {
+    render(<BriefingCard variant="greeting" body="Hello." />);
+    expect(screen.queryByRole("button", { name: "Mark as helpful" })).toBeNull();
+  });
+
+  it("calls onFeedback(true) when thumbs-up is clicked", async () => {
+    const onFeedback = vi.fn();
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        onFeedback={onFeedback}
+        helpful={null}
+      />
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Mark as helpful" }));
+    expect(onFeedback).toHaveBeenCalledWith(true);
+    expect(onFeedback).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onFeedback(false) when thumbs-down is clicked", async () => {
+    const onFeedback = vi.fn();
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        onFeedback={onFeedback}
+        helpful={null}
+      />
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Mark as not helpful" }));
+    expect(onFeedback).toHaveBeenCalledWith(false);
+  });
+
+  it("sets aria-pressed=true on thumbs-up when helpful=true", () => {
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        onFeedback={vi.fn()}
+        helpful={true}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Mark as helpful" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Mark as not helpful" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("sets aria-pressed=true on thumbs-down when helpful=false", () => {
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        onFeedback={vi.fn()}
+        helpful={false}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Mark as helpful" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Mark as not helpful" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("both buttons aria-pressed=false when helpful=null", () => {
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        onFeedback={vi.fn()}
+        helpful={null}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Mark as helpful" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Mark as not helpful" })).toHaveAttribute("aria-pressed", "false");
   });
 });

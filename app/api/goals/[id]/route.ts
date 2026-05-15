@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { GoalInputSchema } from "@/lib/validation/profile";
+import { GoalInputSchema } from "@/lib/validation/goal";
 
 interface Params { params: Promise<{ id: string }> }
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GoalInputSchema } from "@/lib/validation/goal";
 
 export const ProfileStep1Schema = z.object({
   name: z.string().min(1, "Please enter your name."),
@@ -13,13 +14,6 @@ export const ProfileStep2Schema = z.object({
   monthly_income: z.coerce.number().min(0).optional().or(z.literal("")),
   fixed_expenses: z.coerce.number().min(0).optional().or(z.literal("")),
   discretionary_budget: z.coerce.number().min(0).optional().or(z.literal("")),
-});
-
-export const GoalInputSchema = z.object({
-  domain: z.enum(["health", "finance", "wellness"], {
-    error: "Please select a domain.",
-  }),
-  title: z.string().min(1, "Please enter a goal title."),
 });
 
 export const ProfileStep3Schema = z.object({
@@ -63,5 +57,4 @@ export type ProfileStep1Input = z.infer<typeof ProfileStep1Schema>;
 export type ProfileStep2Input = z.infer<typeof ProfileStep2Schema>;
 export type ProfileStep3Input = z.infer<typeof ProfileStep3Schema>;
 export type ProfileStep4Input = z.infer<typeof ProfileStep4Schema>;
-export type GoalInput = z.infer<typeof GoalInputSchema>;
 export type ProfileUpdateInput = z.infer<typeof ProfileUpdateSchema>;

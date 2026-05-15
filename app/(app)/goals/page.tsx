@@ -11,6 +11,7 @@ import { CoachVoiceLine } from "@/components/ui/coach-voice-line";
 import { DomainChipSelector, DomainChipDisplay, type Domain } from "@/components/ui/domain-chip";
 import { StreakBadge } from "@/components/goals/StreakBadge";
 import { GoalProgressBar } from "@/components/goals/GoalProgressBar";
+import { WeeklySummary, type WeeklySummaryData } from "@/components/goals/WeeklySummary";
 
 interface Goal {
   id: string;
@@ -45,43 +46,58 @@ export default function GoalsPage() {
   const [networkError, setNetworkError] = useState("");
   const [streakDays, setStreakDays] = useState(0);
   const [progressMap, setProgressMap] = useState<Record<string, GoalProgress>>({});
+  const [summary, setSummary] = useState<WeeklySummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const atLimit = goals.length >= 3;
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/goals")
-      .then((r) => r.json())
-      .then(async (json) => {
-        if (cancelled) return;
-        const loadedGoals: Goal[] = json.data ?? [];
-        setGoals(loadedGoals);
-        setIsLoading(false);
 
-        if (loadedGoals.length > 0) {
-          const settled = await Promise.allSettled(
-            loadedGoals.map((g) =>
-              fetch(`/api/goals/${g.id}/progress`).then((r) => {
-                if (!r.ok) throw new Error(`${r.status}`);
-                return r.json();
-              })
-            )
-          );
-          if (cancelled) return;
-          const map: Record<string, GoalProgress> = {};
-          settled.forEach((result, i) => {
-            if (result.status === "fulfilled" && result.value?.data) {
-              map[loadedGoals[i].id] = result.value.data;
-            }
-          });
-          setProgressMap(map);
-          const firstWithStreak = settled.find(
-            (r): r is PromiseFulfilledResult<{ data: GoalProgress }> =>
-              r.status === "fulfilled" && r.value?.data?.streakDays != null
-          );
-          setStreakDays(firstWithStreak?.value?.data?.streakDays ?? 0);
-        }
-      });
+    Promise.allSettled([
+      fetch("/api/goals").then((r) => r.json()),
+      fetch("/api/checkins/summary").then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      }),
+    ]).then(async ([goalsResult, summaryResult]) => {
+      if (cancelled) return;
+
+      const loadedGoals: Goal[] =
+        goalsResult.status === "fulfilled" ? (goalsResult.value?.data ?? []) : [];
+      setGoals(loadedGoals);
+      setIsLoading(false);
+
+      if (summaryResult.status === "fulfilled" && summaryResult.value?.data) {
+        setSummary(summaryResult.value.data);
+      }
+      setSummaryLoading(false);
+
+      if (loadedGoals.length > 0) {
+        const settled = await Promise.allSettled(
+          loadedGoals.map((g) =>
+            fetch(`/api/goals/${g.id}/progress`).then((r) => {
+              if (!r.ok) throw new Error(`${r.status}`);
+              return r.json();
+            })
+          )
+        );
+        if (cancelled) return;
+        const map: Record<string, GoalProgress> = {};
+        settled.forEach((result, i) => {
+          if (result.status === "fulfilled" && result.value?.data) {
+            map[loadedGoals[i].id] = result.value.data;
+          }
+        });
+        setProgressMap(map);
+        const firstWithStreak = settled.find(
+          (r): r is PromiseFulfilledResult<{ data: GoalProgress }> =>
+            r.status === "fulfilled" && r.value?.data?.streakDays != null
+        );
+        setStreakDays(firstWithStreak?.value?.data?.streakDays ?? 0);
+      }
+    });
+
     return () => { cancelled = true; };
   }, []);
 
@@ -164,6 +180,14 @@ export default function GoalsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {!isLoading && (
+        <WeeklySummary
+          summary={summary}
+          activeDomains={new Set(goals.map((g) => g.domain))}
+          isLoading={summaryLoading}
+        />
       )}
 
       {!isLoading && (

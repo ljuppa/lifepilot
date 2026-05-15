@@ -1,5 +1,5 @@
-# generated: 2026-05-14
-# last_updated: 2026-05-15 (Story 4.1 done — briefing pipeline implemented)
+# generated: 2026-05-15
+# last_updated: 2026-05-15 (Sprint planning refresh — Epic 4 Sprint 4 active)
 # project: LifePilot
 # project_key: NOKEY
 # tracking_system: file-system
@@ -34,37 +34,32 @@
 # - Developer typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-05-14
+generated: 2026-05-15
 last_updated: 2026-05-15
 project: LifePilot
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
-# SPRINT 1 (completed):
-# Stories 1.1, 1.2, 1.3 — Epic 1 Foundation & Authenticated Access.
-# All merged to main. Auth scaffold, CI/CD, design tokens, Supabase auth flow.
-
-# SPRINT 2 (completed):
-# Stories 2.1, 2.2 — Epic 2 Life Profile & Goal Configuration.
-# All merged to main. Onboarding wizard, profile editing, goals management,
-# API routes, Supabase migrations, 120 automated tests.
-
-# SPRINT 3 (completed):
-# Stories 3.1, 3.2 — Epic 3 Daily Check-In.
-# Delivered: CheckinSchema, MoodSelector component, checkin API (GET/POST),
-# offline queue hook (localStorage, exponential backoff, UUID dedup, drain guard),
-# checkin page (phase state machine, conflict resolution), 5 Supabase migrations.
-# Code review (Blind Hunter + Edge Case Hunter) passed — 7 patches applied.
-# Branch: feature/epic-3-daily-checkin. Pending PR merge to main.
-
-# SPRINT 4 (next):
-# Stories 4.1, 4.2, 4.3 — Epic 4 Daily Briefing Engine.
-# Claude Haiku + prompt caching, Inngest pipeline, Resend email, BriefingCard,
-# AiDisclosureWrapper, safety filter, briefing history + helpfulness feedback.
+# SPRINT HISTORY:
+# ===============
+# Sprint 1 (complete): Epic 1 — Foundation & Authenticated Access
+#   Auth scaffold, CI/CD, design tokens, Supabase auth flow.
+#
+# Sprint 2 (complete): Epic 2 — Life Profile & Goal Configuration
+#   Onboarding wizard, profile editing, goals management, 120 tests.
+#
+# Sprint 3 (complete): Epic 3 — Daily Check-In
+#   CheckinSchema, MoodSelector, offline queue (localStorage, exponential backoff),
+#   check-in page (phase state machine), 5 Supabase migrations. Code reviewed.
+#
+# Sprint 4 (active): Epic 4 — Daily Briefing Engine
+#   4.1 done: Claude Haiku pipeline, Inngest v4 functions, Resend email,
+#   safety filter, briefings table, REST API, 27 tests (195 total passing).
+#   Next: 4.2 Today View, 4.3 Briefing History.
 
 development_status:
-  # ── Epic 1: Foundation & Authenticated Access ────────────────────────────
+  # ── Epic 1: Foundation & Authenticated Access ─────────────────────────────
   epic-1: done
   1-1-project-scaffold-and-deployment-foundation: done
   1-2-user-sign-up-with-email-and-password: done
@@ -83,7 +78,7 @@ development_status:
   3-2-offline-check-in-queue-and-sync: done
   epic-3-retrospective: optional
 
-  # ── Epic 4: Daily Briefing Engine ─────────────────────────────────────────
+  # ── Epic 4: Daily Briefing Engine (Sprint 4 — active) ────────────────────
   epic-4: in-progress
   4-1-briefing-generation-and-email-delivery-pipeline: done
   4-2-today-view-and-briefing-display: backlog

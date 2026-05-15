@@ -1,6 +1,6 @@
 # Story 4.2: Today View & Briefing Display
 
-Status: review
+Status: done
 
 ## Story
 

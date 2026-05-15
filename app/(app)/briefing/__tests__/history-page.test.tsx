@@ -108,6 +108,16 @@ describe("BriefingHistoryPage — empty state", () => {
   });
 });
 
+describe("BriefingHistoryPage — malformed date", () => {
+  it("renders raw string instead of Invalid Date when briefing_date is malformed", async () => {
+    makeSupabase({
+      briefings: [{ ...mockBriefings[0], briefing_date: "not-a-date" }],
+    });
+    render(await BriefingHistoryPage());
+    expect(screen.getByText("not-a-date")).toBeInTheDocument();
+  });
+});
+
 describe("BriefingHistoryPage — auth guards", () => {
   it("redirects to /sign-in when unauthenticated", async () => {
     (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({

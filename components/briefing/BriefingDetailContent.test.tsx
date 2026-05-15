@@ -107,4 +107,19 @@ describe("BriefingDetailContent", () => {
     const { container } = render(<BriefingDetailContent briefing={{ ...mockBriefing, content: null }} />);
     expect(container.firstChild).toBeNull();
   });
+
+  it("ignores double-tap: second click while first PATCH is in flight does not fire a second fetch", async () => {
+    let resolveFirst!: () => void;
+    global.fetch = vi.fn().mockImplementation(() =>
+      new Promise<Response>((res) => {
+        resolveFirst = () => res(new Response("{}", { status: 200 }));
+      })
+    );
+    render(<BriefingDetailContent briefing={mockBriefing} />);
+    const helpfulBtns = screen.getAllByRole("button", { name: "Mark as helpful" });
+    await userEvent.click(helpfulBtns[0]);
+    await userEvent.click(helpfulBtns[0]);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    resolveFirst();
+  });
 });

@@ -20,6 +20,7 @@ function EmailStatusBadge({ status }: { status: string }) {
 }
 
 function formatDate(dateStr: string): string {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr ?? "";
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",

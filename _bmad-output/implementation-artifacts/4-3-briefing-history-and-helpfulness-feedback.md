@@ -1,6 +1,6 @@
 # Story 4.3: Briefing History & Helpfulness Feedback
 
-Status: review
+Status: done
 
 ## Story
 
@@ -74,6 +74,19 @@ So that I can review my coaching history and signal to the AI what is working fo
   - [x] Render: `<BriefingDetailContent briefing={briefing} />` inside the standard layout wrapper
   - [x] Create `app/(app)/briefing/[id]/loading.tsx` — 3 × `BriefingCardSkeleton`
   - [x] Create `app/(app)/briefing/[id]/__tests__/detail-page.test.tsx`
+
+### Review Findings (AI) — 2026-05-15
+
+- [x] [Review][Patch] isSafeUrl allows protocol-relative `//evil.com` URLs — open redirect [lib/briefing/content.ts] — **Fixed:** added `if (lower.startsWith("//")) return false`
+- [x] [Review][Patch] Touch targets 34px < 44px AC4 minimum [components/briefing/BriefingCard.tsx] — **Fixed:** added `min-w-[44px] min-h-[44px] flex items-center justify-center` to button className
+- [x] [Review][Patch] formatDate produces "Invalid Date" for malformed briefing_date [app/(app)/briefing/page.tsx] — **Fixed:** added regex guard `if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr ?? ""`
+- [x] [Review][Patch] Double-tap race: two concurrent PATCHes when feedback buttons clicked rapidly [components/briefing/BriefingDetailContent.tsx] — **Fixed:** added `pendingRef` (useRef) guard; second click during in-flight PATCH is ignored
+- [x] [Review][Patch] External action links missing `target="_blank"` [components/briefing/BriefingCard.tsx] — **Fixed:** added `target="_blank"` to action link `<a>` element
+- [x] [Review][Patch] isValidContent allows `suggestions: [null]` causing runtime crash in render loop [lib/briefing/content.ts] — **Fixed:** added `.every(s => s !== null && typeof s === "object")` check
+- [x] [Review][Defer] `http://` allowed by isSafeUrl — design question; low risk in this context — deferred, pre-existing
+- [x] [Review][Defer] greeting.slice(0,100) may cut mid-Unicode surrogate at byte 100 — cosmetic, low probability — deferred
+- [x] [Review][Defer] `text-slate-500` for wellness domain not a design token — design question — deferred
+- [x] [Review][Defer] 30-day cutoff uses server timezone — acceptable for daily briefing granularity — deferred
 
 ## Dev Notes
 
@@ -574,3 +587,4 @@ claude-sonnet-4-6
 
 - 2026-05-15: Story created
 - 2026-05-15: Implementation complete — 257 tests passing, tsc clean, all ACs satisfied
+- 2026-05-15: Code review complete — 6 patches applied (isSafeUrl protocol-relative fix, 44px touch targets, formatDate guard, double-tap race prevention, target=_blank on links, null suggestion guard); 276 tests passing

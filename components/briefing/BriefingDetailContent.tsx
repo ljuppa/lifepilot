@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BriefingCard } from "./BriefingCard";
 import { CoachesObservation } from "./CoachesObservation";
 import { AiDisclosureWrapper } from "@/components/shared/AiDisclosureWrapper";
@@ -16,14 +16,21 @@ interface BriefingRow {
 
 export function BriefingDetailContent({ briefing }: { briefing: BriefingRow }) {
   const [helpful, setHelpful] = useState<boolean | null>(briefing.helpful ?? null);
+  const pendingRef = useRef(false);
 
   async function handleFeedback(value: boolean) {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     setHelpful(value);
-    await fetch(`/api/briefing/${briefing.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ helpful: value }),
-    });
+    try {
+      await fetch(`/api/briefing/${briefing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ helpful: value }),
+      });
+    } finally {
+      pendingRef.current = false;
+    }
   }
 
   const content = isValidContent(briefing.content) ? briefing.content : null;

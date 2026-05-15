@@ -17,11 +17,16 @@ export interface BriefingContent {
 export function isValidContent(value: unknown): value is BriefingContent {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  return typeof v.greeting === "string" && Array.isArray(v.suggestions);
+  return (
+    typeof v.greeting === "string" &&
+    Array.isArray(v.suggestions) &&
+    (v.suggestions as unknown[]).every((s) => s !== null && typeof s === "object")
+  );
 }
 
 export function isSafeUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   const lower = url.toLowerCase().trimStart();
+  if (lower.startsWith("//")) return false;
   return lower.startsWith("/") || lower.startsWith("https://") || lower.startsWith("http://");
 }

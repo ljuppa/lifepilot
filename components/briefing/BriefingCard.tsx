@@ -44,6 +44,7 @@ export function BriefingCard(props: BriefingCardProps) {
       {!isGreeting && suggestionProps.actionLinkText && suggestionProps.actionLinkUrl && (
         <a
           href={suggestionProps.actionLinkUrl}
+          target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-primary underline-offset-4 hover:underline"
         >
@@ -57,7 +58,7 @@ export function BriefingCard(props: BriefingCardProps) {
             onClick={() => suggestionProps.onFeedback!(true)}
             aria-label="Mark as helpful"
             aria-pressed={suggestionProps.helpful === true}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
           >
             <ThumbsUp
               size={18}
@@ -69,7 +70,7 @@ export function BriefingCard(props: BriefingCardProps) {
             onClick={() => suggestionProps.onFeedback!(false)}
             aria-label="Mark as not helpful"
             aria-pressed={suggestionProps.helpful === false}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
           >
             <ThumbsDown
               size={18}

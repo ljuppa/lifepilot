@@ -59,6 +59,21 @@ describe("BriefingCard — suggestion variant", () => {
     expect(link.textContent).toContain("Start session");
   });
 
+  it("action link has target=_blank and rel=noopener noreferrer", () => {
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        actionLinkText="Learn more"
+        actionLinkUrl="https://example.com"
+      />
+    );
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
   it("does not render action link when not provided", () => {
     render(
       <BriefingCard variant="suggestion" domain="health" body="Walk." />
@@ -177,5 +192,20 @@ describe("BriefingCard — helpfulness feedback", () => {
     );
     expect(screen.getByRole("button", { name: "Mark as helpful" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Mark as not helpful" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("feedback buttons have min-w and min-h 44px touch target classes", () => {
+    render(
+      <BriefingCard
+        variant="suggestion"
+        domain="health"
+        body="Walk."
+        onFeedback={vi.fn()}
+        helpful={null}
+      />
+    );
+    const helpfulBtn = screen.getByRole("button", { name: "Mark as helpful" });
+    expect(helpfulBtn.className).toContain("min-w-[44px]");
+    expect(helpfulBtn.className).toContain("min-h-[44px]");
   });
 });

@@ -1,5 +1,5 @@
 # generated: 2026-05-15
-# last_updated: 2026-05-15 (Story 4.3 created)
+# last_updated: 2026-05-15 (Epic 4 complete)
 # project: LifePilot
 # project_key: NOKEY
 # tracking_system: file-system
@@ -53,10 +53,12 @@ story_location: _bmad-output/implementation-artifacts
 #   CheckinSchema, MoodSelector, offline queue (localStorage, exponential backoff),
 #   check-in page (phase state machine), 5 Supabase migrations. Code reviewed.
 #
-# Sprint 4 (active): Epic 4 — Daily Briefing Engine
+# Sprint 4 (complete): Epic 4 — Daily Briefing Engine
 #   4.1 done: Claude Haiku pipeline, Inngest v4 functions, Resend email,
-#   safety filter, briefings table, REST API, 27 tests (195 total passing).
-#   Next: 4.2 Today View, 4.3 Briefing History.
+#   safety filter, briefings table, REST API. 4.2 done: Today view, BriefingCard,
+#   AiDisclosureWrapper, dashboard. 4.3 done: Briefing history list + detail,
+#   helpfulness feedback UI (thumbs up/down), isSafeUrl, isValidContent utilities.
+#   276 tests passing. Code reviewed — 6 patches applied.
 
 development_status:
   # ── Epic 1: Foundation & Authenticated Access ─────────────────────────────
@@ -79,10 +81,10 @@ development_status:
   epic-3-retrospective: optional
 
   # ── Epic 4: Daily Briefing Engine (Sprint 4 — active) ────────────────────
-  epic-4: in-progress
+  epic-4: done
   4-1-briefing-generation-and-email-delivery-pipeline: done
   4-2-today-view-and-briefing-display: done
-  4-3-briefing-history-and-helpfulness-feedback: review
+  4-3-briefing-history-and-helpfulness-feedback: done
   epic-4-retrospective: optional
 
   # ── Epic 5: Goal Progress, Insights & Re-engagement ──────────────────────

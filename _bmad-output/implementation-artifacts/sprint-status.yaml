@@ -1,5 +1,5 @@
 # generated: 2026-05-14
-# last_updated: 2026-05-15
+# last_updated: 2026-05-15 (Sprint 4 planning)
 # project: LifePilot
 # project_key: NOKEY
 # tracking_system: file-system
@@ -50,11 +50,18 @@ story_location: _bmad-output/implementation-artifacts
 # All merged to main. Onboarding wizard, profile editing, goals management,
 # API routes, Supabase migrations, 120 automated tests.
 
-# SPRINT 3 (next):
+# SPRINT 3 (completed):
 # Stories 3.1, 3.2 — Epic 3 Daily Check-In.
-# Pre-sprint task: swap in-memory rate limiter → @upstash/ratelimit (Amber flag from architect).
-# Prep: create lib/validation/checkin.ts, migrate checkins table, move GoalInputSchema
-#       to lib/validation/goal.ts per architecture spec.
+# Delivered: CheckinSchema, MoodSelector component, checkin API (GET/POST),
+# offline queue hook (localStorage, exponential backoff, UUID dedup, drain guard),
+# checkin page (phase state machine, conflict resolution), 5 Supabase migrations.
+# Code review (Blind Hunter + Edge Case Hunter) passed — 7 patches applied.
+# Branch: feature/epic-3-daily-checkin. Pending PR merge to main.
+
+# SPRINT 4 (next):
+# Stories 4.1, 4.2, 4.3 — Epic 4 Daily Briefing Engine.
+# Claude Haiku + prompt caching, Inngest pipeline, Resend email, BriefingCard,
+# AiDisclosureWrapper, safety filter, briefing history + helpfulness feedback.
 
 development_status:
   # ── Epic 1: Foundation & Authenticated Access ────────────────────────────
@@ -71,16 +78,16 @@ development_status:
   epic-2-retrospective: optional
 
   # ── Epic 3: Daily Check-In ────────────────────────────────────────────────
-  epic-3: backlog
-  3-1-daily-check-in-form: backlog
-  3-2-offline-check-in-queue-and-sync: backlog
+  epic-3: done
+  3-1-daily-check-in-form: done
+  3-2-offline-check-in-queue-and-sync: done
   epic-3-retrospective: optional
 
   # ── Epic 4: Daily Briefing Engine ─────────────────────────────────────────
-  epic-4: backlog
-  4-1-briefing-generation-and-email-delivery-pipeline: backlog
-  4-2-today-view-and-briefing-display: backlog
-  4-3-briefing-history-and-helpfulness-feedback: backlog
+  epic-4: in-progress
+  4-1-briefing-generation-and-email-delivery-pipeline: ready-for-dev
+  4-2-today-view-and-briefing-display: ready-for-dev
+  4-3-briefing-history-and-helpfulness-feedback: ready-for-dev
   epic-4-retrospective: optional
 
   # ── Epic 5: Goal Progress, Insights & Re-engagement ──────────────────────

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PROTECTED_ROUTES = ["/dashboard", "/onboarding", "/checkin", "/goals", "/profile", "/settings", "/data"];
+const PROTECTED_ROUTES = ["/dashboard", "/onboarding", "/checkin", "/goals", "/briefing", "/profile", "/settings", "/data"];
 
 const PUBLIC_ROUTES = [
   "/sign-in",

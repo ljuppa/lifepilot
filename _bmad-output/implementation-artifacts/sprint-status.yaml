@@ -97,7 +97,7 @@ development_status:
 
   # ── Epic 6: Privacy, Data Control & Compliance ───────────────────────────
   epic-6: in-progress
-  6-1-personal-data-export: ready-for-dev
+  6-1-personal-data-export: review
   6-2-data-summary-and-account-deletion: backlog
   6-3-automated-data-retention: backlog
   epic-6-retrospective: optional

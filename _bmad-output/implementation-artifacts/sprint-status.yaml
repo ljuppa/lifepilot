@@ -1,5 +1,5 @@
 # generated: 2026-05-14
-# last_updated: 2026-05-15 (Sprint 4 planning + story 4.1 created)
+# last_updated: 2026-05-15 (Story 4.1 done — briefing pipeline implemented)
 # project: LifePilot
 # project_key: NOKEY
 # tracking_system: file-system
@@ -85,7 +85,7 @@ development_status:
 
   # ── Epic 4: Daily Briefing Engine ─────────────────────────────────────────
   epic-4: in-progress
-  4-1-briefing-generation-and-email-delivery-pipeline: in-progress
+  4-1-briefing-generation-and-email-delivery-pipeline: done
   4-2-today-view-and-briefing-display: backlog
   4-3-briefing-history-and-helpfulness-feedback: backlog
   epic-4-retrospective: optional

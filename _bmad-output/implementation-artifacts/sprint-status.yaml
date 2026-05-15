@@ -80,7 +80,7 @@ development_status:
   3-2-offline-check-in-queue-and-sync: done
   epic-3-retrospective: optional
 
-  # ── Epic 4: Daily Briefing Engine (Sprint 4 — active) ────────────────────
+  # ── Epic 4: Daily Briefing Engine ────────────────────────────────────────
   epic-4: done
   4-1-briefing-generation-and-email-delivery-pipeline: done
   4-2-today-view-and-briefing-display: done

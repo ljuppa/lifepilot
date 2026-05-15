@@ -34,6 +34,7 @@ export function BriefingCard(props: BriefingCardProps) {
         (props as BriefingCardSuggestionProps).actionLinkUrl && (
           <a
             href={(props as BriefingCardSuggestionProps).actionLinkUrl!}
+            rel="noopener noreferrer"
             className="text-sm text-primary underline-offset-4 hover:underline"
           >
             {(props as BriefingCardSuggestionProps).actionLinkText} →

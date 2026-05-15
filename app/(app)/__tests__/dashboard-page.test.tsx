@@ -57,7 +57,7 @@ function makeSupabase({
 
       // handle count query
       const countQ: Record<string, unknown> = {};
-      const cMs = ["select", "eq"];
+      const cMs = ["select", "eq", "lt"];
       for (const m of cMs) countQ[m] = (..._args: unknown[]) => countQ;
       countQ.then = (resolve: (v: unknown) => unknown) =>
         Promise.resolve({ count: briefingCount, error: null }).then(resolve);
@@ -154,7 +154,7 @@ describe("DashboardPage — auth guards", () => {
           table === "profiles" ? { data: null, error: new Error("no profile") } : { data: null, error: null };
         q.maybeSingle = async () => ({ data: null, error: null });
         const countQ: Record<string, unknown> = {};
-        ["select", "eq"].forEach((m) => { countQ[m] = () => countQ; });
+        ["select", "eq", "lt"].forEach((m) => { countQ[m] = () => countQ; });
         countQ.then = (r: (v: unknown) => unknown) => Promise.resolve({ count: 0 }).then(r);
         if (table === "briefings") {
           q.select = (_s: string, opts?: { head?: boolean }) =>

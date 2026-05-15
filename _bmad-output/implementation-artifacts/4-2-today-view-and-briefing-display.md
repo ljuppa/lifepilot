@@ -316,6 +316,7 @@ claude-sonnet-4-6
 - `CoachesObservation`: uses `.coach-observation-surface` CSS class (globals.css); only renders when `content.observation` is non-null — display-time logic, no generation scheduling.
 - `dashboard/page.tsx`: replaced placeholder with full RSC briefing card stack; uses `maybeSingle()` (not `single()`) so absent row returns null without error; parallel fetch of today's briefing + lifetime count for first-time detection.
 - `dashboard/loading.tsx`: 3 skeleton cards for Next.js streaming.
+- Code-review fixes (2026-05-15): XSS-safe URL guard (`isSafeUrl`), `isValidContent` type guard on briefing.content, domain validation with fallback, `.lt("briefing_date", today)` scoping for isFirstTime count, Supabase error handling, stable key for suggestions map, `rel="noopener noreferrer"` on action links.
 
 ### File List
 

@@ -1,6 +1,6 @@
 # Story 5.1: Goal Progress & Check-In Streak
 
-Status: review
+Status: done
 
 ## Story
 
@@ -321,3 +321,4 @@ claude-sonnet-4-6
 
 - 2026-05-15: Story created — Sprint 5, Epic 5 first story; includes architectural improvements (middleware + error boundaries) as Task 0
 - 2026-05-15: Implementation complete — 310 tests passing, all ACs satisfied
+- 2026-05-15: Code review complete — 311 tests passing; 5 patches: UUID validation, Promise.allSettled, wellness label with target, aria-valuetext, MAX_DISPLAYED_PERCENT constant

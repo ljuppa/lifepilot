@@ -9,12 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CoachVoiceLine } from "@/components/ui/coach-voice-line";
 import { DomainChipSelector, DomainChipDisplay, type Domain } from "@/components/ui/domain-chip";
+import { StreakBadge } from "@/components/goals/StreakBadge";
+import { GoalProgressBar } from "@/components/goals/GoalProgressBar";
 
 interface Goal {
   id: string;
   domain: Domain;
   title: string;
   status: "active" | "inactive";
+}
+
+interface GoalProgress {
+  streakDays: number;
+  progressPercent: number | null;
+  progressLabel: string | null;
+  currentValue: number | null;
 }
 
 function SkeletonGoal() {
@@ -34,6 +43,8 @@ export default function GoalsPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [networkError, setNetworkError] = useState("");
+  const [streakDays, setStreakDays] = useState(0);
+  const [progressMap, setProgressMap] = useState<Record<string, GoalProgress>>({});
 
   const atLimit = goals.length >= 3;
 
@@ -41,9 +52,26 @@ export default function GoalsPage() {
     let cancelled = false;
     fetch("/api/goals")
       .then((r) => r.json())
-      .then((json) => {
-        if (!cancelled && json.data) setGoals(json.data);
-        if (!cancelled) setIsLoading(false);
+      .then(async (json) => {
+        if (cancelled) return;
+        const loadedGoals: Goal[] = json.data ?? [];
+        setGoals(loadedGoals);
+        setIsLoading(false);
+
+        if (loadedGoals.length > 0) {
+          const results = await Promise.all(
+            loadedGoals.map((g) =>
+              fetch(`/api/goals/${g.id}/progress`).then((r) => r.json())
+            )
+          );
+          if (cancelled) return;
+          const map: Record<string, GoalProgress> = {};
+          results.forEach((r, i) => {
+            if (r.data) map[loadedGoals[i].id] = r.data;
+          });
+          setProgressMap(map);
+          setStreakDays(results[0]?.data?.streakDays ?? 0);
+        }
       });
     return () => { cancelled = true; };
   }, []);
@@ -66,6 +94,7 @@ export default function GoalsPage() {
     <div className="mx-auto max-w-lg px-4 py-12 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Your goals</h1>
+        <StreakBadge streakDays={streakDays} />
       </div>
 
       {networkError && (
@@ -91,7 +120,13 @@ export default function GoalsPage() {
               className="flex items-center gap-3 rounded-lg border border-border p-4"
             >
               <DomainChipDisplay domain={goal.domain} />
-              <span className="flex-1 text-sm">{goal.title}</span>
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <span className="text-sm">{goal.title}</span>
+                <GoalProgressBar
+                  progressPercent={progressMap[goal.id]?.progressPercent ?? null}
+                  progressLabel={progressMap[goal.id]?.progressLabel ?? null}
+                />
+              </div>
               {confirmRemoveId === goal.id ? (
                 <div className="flex gap-2">
                   <Button

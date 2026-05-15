@@ -107,10 +107,14 @@ describe("GoalsPage — Goals list", () => {
 
 // ── Remove flow ────────────────────────────────────────────────────────────────
 
+const mockProgress = { streakDays: 3, progressPercent: 60, progressLabel: "60%", currentValue: 60 };
+
 describe("GoalsPage — Remove goal", () => {
   beforeEach(() => {
     global.fetch = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockGoals }) }) // initial GET
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockGoals }) })     // GET goals
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockProgress }) })  // progress g1
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockProgress }) })  // progress g2
       .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { deleted: true } }) }); // DELETE
   });
 

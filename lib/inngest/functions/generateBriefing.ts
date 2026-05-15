@@ -5,6 +5,7 @@ import { buildBriefingPrompt } from "@/lib/claude/prompts";
 import { filterLlmOutput } from "@/lib/claude/safety";
 import { getResendClient } from "@/lib/email/resend";
 import { buildBriefingEmail } from "@/lib/email/templates/briefing";
+import { generateUnsubscribeToken } from "@/lib/email/unsubscribe";
 
 const CLAUDE_HAIKU_MODEL = "claude-haiku-4-5-20251001";
 const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://lifepilot.app";
@@ -148,7 +149,9 @@ export const generateBriefing = inngest.createFunction(
         appBaseUrl: APP_BASE_URL,
       };
 
-      const { subject, html, text } = buildBriefingEmail(emailCtx);
+      const unsubToken = generateUnsubscribeToken(userId, "briefingEmails");
+      const unsubscribeUrl = `${APP_BASE_URL}/api/unsubscribe?token=${unsubToken}&userId=${userId}&type=briefingEmails`;
+      const { subject, html, text } = buildBriefingEmail(emailCtx, unsubscribeUrl);
 
       const { error: sendError } = await resend.emails.send({
         from: FROM_EMAIL,

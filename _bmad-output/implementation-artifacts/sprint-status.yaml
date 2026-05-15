@@ -1,5 +1,5 @@
 # generated: 2026-05-15
-# last_updated: 2026-05-15 (Epic 4 complete)
+# last_updated: 2026-05-15 (Sprint 5 planning — Story 5.1 ready-for-dev)
 # project: LifePilot
 # project_key: NOKEY
 # tracking_system: file-system
@@ -87,12 +87,12 @@ development_status:
   4-3-briefing-history-and-helpfulness-feedback: done
   epic-4-retrospective: optional
 
-  # ── Epic 5: Goal Progress, Insights & Re-engagement ──────────────────────
-  epic-5: backlog
-  5-1-goal-progress-and-check-in-streak: backlog
-  5-2-weekly-summary: backlog
-  5-3-inactivity-detection-and-re-engagement-email: backlog
-  5-4-notification-preferences-and-unsubscribe: backlog
+  # ── Epic 5: Goal Progress, Insights & Re-engagement (Sprint 5 — complete) ──
+  epic-5: done
+  5-1-goal-progress-and-check-in-streak: done
+  5-2-weekly-summary: done
+  5-3-inactivity-detection-and-re-engagement-email: done
+  5-4-notification-preferences-and-unsubscribe: done
   epic-5-retrospective: optional
 
   # ── Epic 6: Privacy, Data Control & Compliance ───────────────────────────

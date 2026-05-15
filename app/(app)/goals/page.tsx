@@ -9,12 +9,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CoachVoiceLine } from "@/components/ui/coach-voice-line";
 import { DomainChipSelector, DomainChipDisplay, type Domain } from "@/components/ui/domain-chip";
+import { StreakBadge } from "@/components/goals/StreakBadge";
+import { GoalProgressBar } from "@/components/goals/GoalProgressBar";
+import { WeeklySummary, type WeeklySummaryData } from "@/components/goals/WeeklySummary";
 
 interface Goal {
   id: string;
   domain: Domain;
   title: string;
   status: "active" | "inactive";
+}
+
+interface GoalProgress {
+  streakDays: number;
+  progressPercent: number | null;
+  progressLabel: string | null;
+  currentValue: number | null;
 }
 
 function SkeletonGoal() {
@@ -34,17 +44,60 @@ export default function GoalsPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [networkError, setNetworkError] = useState("");
+  const [streakDays, setStreakDays] = useState(0);
+  const [progressMap, setProgressMap] = useState<Record<string, GoalProgress>>({});
+  const [summary, setSummary] = useState<WeeklySummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const atLimit = goals.length >= 3;
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/goals")
-      .then((r) => r.json())
-      .then((json) => {
-        if (!cancelled && json.data) setGoals(json.data);
-        if (!cancelled) setIsLoading(false);
-      });
+
+    Promise.allSettled([
+      fetch("/api/goals").then((r) => r.json()),
+      fetch("/api/checkins/summary").then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      }),
+    ]).then(async ([goalsResult, summaryResult]) => {
+      if (cancelled) return;
+
+      const loadedGoals: Goal[] =
+        goalsResult.status === "fulfilled" ? (goalsResult.value?.data ?? []) : [];
+      setGoals(loadedGoals);
+      setIsLoading(false);
+
+      if (summaryResult.status === "fulfilled" && summaryResult.value?.data) {
+        setSummary(summaryResult.value.data);
+      }
+      setSummaryLoading(false);
+
+      if (loadedGoals.length > 0) {
+        const settled = await Promise.allSettled(
+          loadedGoals.map((g) =>
+            fetch(`/api/goals/${g.id}/progress`).then((r) => {
+              if (!r.ok) throw new Error(`${r.status}`);
+              return r.json();
+            })
+          )
+        );
+        if (cancelled) return;
+        const map: Record<string, GoalProgress> = {};
+        settled.forEach((result, i) => {
+          if (result.status === "fulfilled" && result.value?.data) {
+            map[loadedGoals[i].id] = result.value.data;
+          }
+        });
+        setProgressMap(map);
+        const firstWithStreak = settled.find(
+          (r): r is PromiseFulfilledResult<{ data: GoalProgress }> =>
+            r.status === "fulfilled" && r.value?.data?.streakDays != null
+        );
+        setStreakDays(firstWithStreak?.value?.data?.streakDays ?? 0);
+      }
+    });
+
     return () => { cancelled = true; };
   }, []);
 
@@ -54,6 +107,7 @@ export default function GoalsPage() {
     const res = await fetch(`/api/goals/${id}`, { method: "DELETE" });
     if (res.ok) {
       setGoals((g) => g.filter((goal) => goal.id !== id));
+      setProgressMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
     } else {
       const json = await res.json();
       setNetworkError(json?.error?.message ?? "Failed to remove goal.");
@@ -66,6 +120,7 @@ export default function GoalsPage() {
     <div className="mx-auto max-w-lg px-4 py-12 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Your goals</h1>
+        <StreakBadge streakDays={streakDays} />
       </div>
 
       {networkError && (
@@ -91,7 +146,13 @@ export default function GoalsPage() {
               className="flex items-center gap-3 rounded-lg border border-border p-4"
             >
               <DomainChipDisplay domain={goal.domain} />
-              <span className="flex-1 text-sm">{goal.title}</span>
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <span className="text-sm">{goal.title}</span>
+                <GoalProgressBar
+                  progressPercent={progressMap[goal.id]?.progressPercent ?? null}
+                  progressLabel={progressMap[goal.id]?.progressLabel ?? null}
+                />
+              </div>
               {confirmRemoveId === goal.id ? (
                 <div className="flex gap-2">
                   <Button
@@ -119,6 +180,14 @@ export default function GoalsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {!isLoading && (
+        <WeeklySummary
+          summary={summary}
+          activeDomains={new Set(goals.map((g) => g.domain))}
+          isLoading={summaryLoading}
+        />
       )}
 
       {!isLoading && (

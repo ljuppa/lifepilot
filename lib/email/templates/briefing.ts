@@ -42,13 +42,18 @@ function buildFocusPreview(suggestions: BriefingEmailContext["suggestions"]): st
   return first ? first.title : "Your daily coaching briefing";
 }
 
-export function buildBriefingEmail(ctx: BriefingEmailContext): {
+export function buildBriefingEmail(ctx: BriefingEmailContext, unsubscribeUrl?: string): {
   subject: string;
   html: string;
   text: string;
 } {
   const subject = `Your ${ctx.dayOfWeek} — ${buildFocusPreview(ctx.suggestions)}`;
   const checkinUrl = `${ctx.appBaseUrl}/checkin`;
+
+  const unsubscribeHtml = unsubscribeUrl
+    ? `<p style="font-size:12px;color:#888;margin:8px 0 0;">Don't want these emails? <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe</a></p>`
+    : "";
+  const unsubscribeText = unsubscribeUrl ? `\nTo unsubscribe: ${unsubscribeUrl}` : "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -63,6 +68,7 @@ export function buildBriefingEmail(ctx: BriefingEmailContext): {
   <p style="font-family:Georgia,serif;font-size:16px;line-height:1.7;color:#2D3142;font-style:italic;margin:24px 0 0;">That's your ${ctx.dayOfWeek}, ${ctx.userName}. Make it count.</p>
   <hr style="border:none;border-top:1px solid #E5E0D8;margin:24px 0;">
   <p style="font-size:12px;color:#888;margin:0;">✦ AI-generated — not medical, nutritional, or financial advice.</p>
+  ${unsubscribeHtml}
 </div>
 </body>
 </html>`;
@@ -76,7 +82,7 @@ export function buildBriefingEmail(ctx: BriefingEmailContext): {
     "",
     `That's your ${ctx.dayOfWeek}, ${ctx.userName}. Make it count.`,
     "",
-    "✦ AI-generated — not medical, nutritional, or financial advice.",
+    `✦ AI-generated — not medical, nutritional, or financial advice.${unsubscribeText}`,
   ].join("\n");
 
   return { subject, html, text };

@@ -12,11 +12,23 @@ const mockGoals = [
   { id: "g2", domain: "finance", title: "Save $500/mo", status: "active" },
 ];
 
+const mockSummary = {
+  daysCheckedInThisWeek: 3,
+  briefingsThisWeek: 2,
+  domainAverages: { health: 7.0, finance: 400, wellness: null },
+};
+
+// Default fetch: goals returns empty array, summary returns valid shape.
+// This prevents WeeklySummary from crashing when summary.domainAverages is accessed.
+function defaultFetch(url: string) {
+  if (typeof url === "string" && url.includes("/api/checkins/summary")) {
+    return Promise.resolve({ ok: true, json: async () => ({ data: mockSummary }) });
+  }
+  return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+}
+
 beforeEach(() => {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ data: [] }),
-  });
+  global.fetch = vi.fn().mockImplementation(defaultFetch);
 });
 
 async function waitForLoad() {
@@ -31,9 +43,7 @@ describe("GoalsPage — Loading state", () => {
   it("hides action buttons and goal list while loading", () => {
     global.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
     render(<GoalsPage />);
-    // "Add goal" button only appears after data loads
     expect(screen.queryByRole("button", { name: /add goal/i })).not.toBeInTheDocument();
-    // No goals list rendered yet
     expect(screen.queryByRole("list", { name: /active goals/i })).not.toBeInTheDocument();
   });
 });
@@ -42,10 +52,6 @@ describe("GoalsPage — Loading state", () => {
 
 describe("GoalsPage — Empty state", () => {
   it("shows empty state CoachVoiceLine when no goals exist", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: [] }),
-    });
     render(<GoalsPage />);
     await waitForLoad();
     expect(screen.getByText(/no active goals yet/i)).toBeInTheDocument();
@@ -62,9 +68,11 @@ describe("GoalsPage — Empty state", () => {
 
 describe("GoalsPage — Goals list", () => {
   beforeEach(() => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: mockGoals }),
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/checkins/summary")) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: mockSummary }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ data: mockGoals }) });
     });
   });
 
@@ -94,9 +102,11 @@ describe("GoalsPage — Goals list", () => {
       ...mockGoals,
       { id: "g3", domain: "wellness", title: "Sleep 8h", status: "active" },
     ];
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: threeGoals }),
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/checkins/summary")) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: mockSummary }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ data: threeGoals }) });
     });
     render(<GoalsPage />);
     await waitForLoad();
@@ -105,13 +115,35 @@ describe("GoalsPage — Goals list", () => {
   });
 });
 
+// ── Weekly summary ─────────────────────────────────────────────────────────────
+
+describe("GoalsPage — Weekly summary", () => {
+  it("shows weekly summary section after load", async () => {
+    render(<GoalsPage />);
+    await waitForLoad();
+    expect(screen.getByRole("region", { name: /this week/i })).toBeInTheDocument();
+  });
+
+  it("shows days checked in count from summary data", async () => {
+    render(<GoalsPage />);
+    await waitForLoad();
+    expect(screen.getByText("3 / 7")).toBeInTheDocument();
+  });
+});
+
 // ── Remove flow ────────────────────────────────────────────────────────────────
+
+const mockProgress = { streakDays: 3, progressPercent: 60, progressLabel: "60%", currentValue: 60 };
 
 describe("GoalsPage — Remove goal", () => {
   beforeEach(() => {
+    // Fetch call order: 1=GET goals, 2=GET summary, 3=progress g1, 4=progress g2, 5=DELETE
     global.fetch = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockGoals }) }) // initial GET
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { deleted: true } }) }); // DELETE
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockGoals }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockSummary }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockProgress }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockProgress }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { deleted: true } }) });
   });
 
   it("shows Confirm and Cancel buttons after clicking Remove", async () => {
@@ -187,8 +219,9 @@ describe("GoalsPage — Add goal", () => {
   it("adds goal to list after saving", async () => {
     const newGoal = { id: "g3", domain: "wellness", title: "Sleep 8h", status: "active" };
     global.fetch = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [] }) })     // initial GET
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: newGoal }) }); // POST
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [] }) })         // 1. GET goals
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: mockSummary }) }) // 2. GET summary
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: newGoal }) });    // 3. POST goal
 
     render(<GoalsPage />);
     await waitForLoad();

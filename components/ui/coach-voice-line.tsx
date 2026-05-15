@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type Variant = "opening" | "closing" | "empty";
+type Variant = "opening" | "closing" | "empty" | "observation";
 
 interface CoachVoiceLineProps {
   children: React.ReactNode;

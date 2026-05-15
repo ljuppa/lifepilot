@@ -1,11 +1,16 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { inngest } from "../client";
 import { getResendClient } from "@/lib/email/resend";
+import { generateUnsubscribeToken } from "@/lib/email/unsubscribe";
 
 const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://lifepilot.app";
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "briefing@lifepilot.app";
 
-export function buildReengagementEmail(firstName: string, appUrl: string) {
+export function buildReengagementEmail(firstName: string, appUrl: string, unsubscribeUrl?: string) {
+  const unsubscribeHtml = unsubscribeUrl
+    ? `<p style="font-size:12px;color:#666;margin-top:24px;">Don't want these emails? <a href="${unsubscribeUrl}">Unsubscribe</a></p>`
+    : "";
+  const unsubscribeText = unsubscribeUrl ? `\n\nTo unsubscribe: ${unsubscribeUrl}` : "";
   return {
     subject: `Your streak is waiting, ${firstName}`,
     html: `
@@ -14,8 +19,9 @@ export function buildReengagementEmail(firstName: string, appUrl: string) {
       <p>Even a quick check-in helps you stay on track. It only takes a minute.</p>
       <p><a href="${appUrl}/checkin">Check in now &rarr;</a></p>
       <p>— Your LifePilot coach</p>
+      ${unsubscribeHtml}
     `,
-    text: `Hi ${firstName},\n\nWe noticed you haven't checked in for a few days. Your goals are still here, waiting for you.\n\nEven a quick check-in helps you stay on track. It only takes a minute.\n\nCheck in now: ${appUrl}/checkin\n\n— Your LifePilot coach`,
+    text: `Hi ${firstName},\n\nWe noticed you haven't checked in for a few days. Your goals are still here, waiting for you.\n\nEven a quick check-in helps you stay on track. It only takes a minute.\n\nCheck in now: ${appUrl}/checkin\n\n— Your LifePilot coach${unsubscribeText}`,
   };
 }
 
@@ -76,7 +82,9 @@ export const checkInactivity = inngest.createFunction(
           }
 
           const firstName = (user.name as string | null) ?? "there";
-          const { subject, html, text } = buildReengagementEmail(firstName, APP_BASE_URL);
+          const unsubToken = generateUnsubscribeToken(user.id, "reengagementEmails");
+          const unsubscribeUrl = `${APP_BASE_URL}/api/unsubscribe?token=${unsubToken}&userId=${user.id}&type=reengagementEmails`;
+          const { subject, html, text } = buildReengagementEmail(firstName, APP_BASE_URL, unsubscribeUrl);
 
           const { error: sendError } = await resend.emails.send({
             from: FROM_EMAIL,

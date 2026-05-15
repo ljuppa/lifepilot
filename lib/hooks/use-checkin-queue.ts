@@ -8,6 +8,7 @@ const MAX_RETRIES = 3;
 
 interface QueuedCheckin extends CheckinInput {
   checked_in_at: string;
+  localId: string;
 }
 
 function readQueue(): QueuedCheckin[] {
@@ -33,31 +34,39 @@ async function postCheckin(item: QueuedCheckin): Promise<boolean> {
   return res.ok;
 }
 
+let _isDraining = false;
+
 async function drainQueue(): Promise<void> {
-  let queue = readQueue();
-  if (queue.length === 0) return;
+  if (_isDraining) return;
+  _isDraining = true;
+  try {
+    let queue = readQueue();
+    if (queue.length === 0) return;
 
-  for (const item of [...queue]) {
-    let success = false;
-    let delay = 2000;
+    for (const item of [...queue]) {
+      let success = false;
+      let delay = 2000;
 
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        success = await postCheckin(item);
-        if (success) break;
-      } catch {
-        // network error — retry
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          success = await postCheckin(item);
+          if (success) break;
+        } catch {
+          // network error — retry
+        }
+        if (attempt < MAX_RETRIES - 1) {
+          await new Promise((r) => setTimeout(r, delay));
+          delay *= 2;
+        }
       }
-      if (attempt < MAX_RETRIES - 1) {
-        await new Promise((r) => setTimeout(r, delay));
-        delay *= 2;
+
+      if (success) {
+        queue = queue.filter((q) => q.localId !== item.localId);
+        writeQueue(queue);
       }
     }
-
-    if (success) {
-      queue = queue.filter((q) => q.checked_in_at !== item.checked_in_at);
-      writeQueue(queue);
-    }
+  } finally {
+    _isDraining = false;
   }
 }
 
@@ -72,10 +81,11 @@ export function useCheckinQueue() {
     setPendingCount(readQueue().length);
   }, []);
 
-  const enqueue = useCallback((item: Omit<QueuedCheckin, "checked_in_at">) => {
+  const enqueue = useCallback((item: Omit<QueuedCheckin, "checked_in_at" | "localId">) => {
     const entry: QueuedCheckin = {
       ...item,
       checked_in_at: new Date().toISOString(),
+      localId: crypto.randomUUID(),
     };
     writeQueue([...readQueue(), entry]);
     refreshCount();

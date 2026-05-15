@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { CheckinSchema } from "@/lib/validation/checkin";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   const supabase = await createClient();
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
       { status: 401 }
+    );
+  }
+
+  const { ok, retryAfterSeconds } = await checkRateLimit(`checkin:${user.id}`, 10);
+  if (!ok) {
+    return NextResponse.json(
+      { error: { code: "RATE_LIMITED", message: "Too many check-ins. Please try again later." } },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
     );
   }
 

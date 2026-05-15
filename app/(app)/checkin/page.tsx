@@ -67,6 +67,8 @@ export default function CheckinPage() {
       } else {
         setPhase("form");
       }
+    }).catch(() => {
+      if (!cancelled) setPhase("form");
     });
     return () => { cancelled = true; };
   }, [hasPending]);
@@ -151,7 +153,7 @@ export default function CheckinPage() {
         </CoachVoiceLine>
         <div className="flex gap-3">
           <Button
-            onClick={async () => { await sync(); setPhase("form"); }}
+            onClick={async () => { await sync(); if (!hasPending()) setPhase("form"); }}
             disabled={syncStatus === "syncing"}
           >
             {syncStatus === "syncing" ? "Syncing…" : "Sync now"}

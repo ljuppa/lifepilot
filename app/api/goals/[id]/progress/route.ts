@@ -90,7 +90,8 @@ export async function GET(_request: Request, { params }: Params) {
     .from("checkins")
     .select("checked_in_at")
     .eq("user_id", user.id)
-    .order("checked_in_at", { ascending: false });
+    .order("checked_in_at", { ascending: false })
+    .limit(400);
 
   const checkinDates = (checkinRows ?? []).map((r) =>
     (r.checked_in_at as string).slice(0, 10)
@@ -101,7 +102,7 @@ export async function GET(_request: Request, { params }: Params) {
   // Domain-specific progress
   const targetValue = goal.target_value as number | null;
 
-  if (targetValue === null) {
+  if (targetValue === null || targetValue <= 0) {
     return NextResponse.json({
       data: { streakDays, progressPercent: null, progressLabel: null, currentValue: null },
     });

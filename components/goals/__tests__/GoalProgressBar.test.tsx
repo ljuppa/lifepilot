@@ -26,10 +26,11 @@ describe("GoalProgressBar", () => {
     expect(fill?.style.width).toBe("100%");
   });
 
-  it("aria-valuenow reflects actual percent (not capped)", () => {
-    render(<GoalProgressBar progressPercent={130} progressLabel="over budget" />);
+  it("aria-valuenow is clamped to 100 and aria-valuetext carries the real value", () => {
+    render(<GoalProgressBar progressPercent={130} progressLabel="$1,300 / $1,000" />);
     const bar = screen.getByRole("progressbar");
-    expect(bar).toHaveAttribute("aria-valuenow", "130");
+    expect(bar).toHaveAttribute("aria-valuenow", "100");
+    expect(bar).toHaveAttribute("aria-valuetext", "$1,300 / $1,000");
   });
 
   it("renders 0% fill bar for zero progress", () => {

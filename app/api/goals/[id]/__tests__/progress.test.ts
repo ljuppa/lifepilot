@@ -106,7 +106,7 @@ describe("GET /api/goals/[id]/progress — auth", () => {
   });
 });
 
-describe("GET /api/goals/[id]/progress — target_value null", () => {
+describe("GET /api/goals/[id]/progress — target_value null or zero", () => {
   it("returns null progress when goal has no target_value", async () => {
     mockClient({ id: "uid-1" }, mockGoal("health", null), [TODAY]);
     const res = await callGet();
@@ -115,6 +115,14 @@ describe("GET /api/goals/[id]/progress — target_value null", () => {
     expect(data.progressPercent).toBeNull();
     expect(data.progressLabel).toBeNull();
     expect(data.currentValue).toBeNull();
+  });
+
+  it("returns null progress when target_value is 0 (avoids division by zero)", async () => {
+    mockClient({ id: "uid-1" }, mockGoal("health", 0), [TODAY], [{ health_metric: 50 }]);
+    const res = await callGet();
+    expect(res.status).toBe(200);
+    const { data } = await res.json();
+    expect(data.progressPercent).toBeNull();
   });
 });
 

@@ -75,10 +75,11 @@ export default function GoalsPage() {
             }
           });
           setProgressMap(map);
-          const firstFulfilled = settled.find((r) => r.status === "fulfilled") as
-            | PromiseFulfilledResult<{ data: GoalProgress }>
-            | undefined;
-          setStreakDays(firstFulfilled?.value?.data?.streakDays ?? 0);
+          const firstWithStreak = settled.find(
+            (r): r is PromiseFulfilledResult<{ data: GoalProgress }> =>
+              r.status === "fulfilled" && r.value?.data?.streakDays != null
+          );
+          setStreakDays(firstWithStreak?.value?.data?.streakDays ?? 0);
         }
       });
     return () => { cancelled = true; };
@@ -90,6 +91,7 @@ export default function GoalsPage() {
     const res = await fetch(`/api/goals/${id}`, { method: "DELETE" });
     if (res.ok) {
       setGoals((g) => g.filter((goal) => goal.id !== id));
+      setProgressMap((prev) => { const next = { ...prev }; delete next[id]; return next; });
     } else {
       const json = await res.json();
       setNetworkError(json?.error?.message ?? "Failed to remove goal.");

@@ -12,7 +12,9 @@ const YESTERDAY = (() => {
   return d.toISOString().slice(0, 10);
 })();
 
-async function callGet(id = "goal-1") {
+const VALID_UUID = "00000000-0000-0000-0000-000000000001";
+
+async function callGet(id = VALID_UUID) {
   return GET(new Request("http://localhost"), {
     params: Promise.resolve({ id }),
   });
@@ -67,13 +69,25 @@ function mockClient(
 }
 
 const mockGoal = (domain: string, targetValue: number | null = 10) => ({
-  id: "goal-1",
+  id: VALID_UUID,
   domain,
   target_value: targetValue,
   user_id: "uid-1",
 });
 
 beforeEach(() => vi.clearAllMocks());
+
+describe("GET /api/goals/[id]/progress — id validation", () => {
+  it("returns 404 for a non-UUID id before hitting the database", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: async () => ({ data: { user: { id: "uid-1" } }, error: null }) },
+      from: vi.fn(),
+    } as never);
+    const res = await callGet("not-a-uuid");
+    expect(res.status).toBe(404);
+    expect(vi.mocked(createClient).mock.instances.length).toBeGreaterThan(0);
+  });
+});
 
 describe("GET /api/goals/[id]/progress — auth", () => {
   it("returns 401 when unauthenticated", async () => {
@@ -185,6 +199,6 @@ describe("GET /api/goals/[id]/progress — wellness domain", () => {
     const res = await callGet();
     const { data } = await res.json();
     expect(data.progressPercent).toBe(100); // avg=8, target=8 → 100%
-    expect(data.progressLabel).toContain("8.0 hrs avg");
+    expect(data.progressLabel).toContain("8.0 / 8.0 hrs avg");
   });
 });

@@ -14,10 +14,7 @@ export function StreakBadge({ streakDays }: StreakBadgeProps) {
 
   useEffect(() => {
     if (!MILESTONES.has(streakDays)) return;
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
     setPulse(true);

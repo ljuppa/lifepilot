@@ -15,7 +15,7 @@ export function GoalProgressBar({ progressPercent, progressLabel }: GoalProgress
       {progressLabel && (
         <p className="text-xs text-muted-foreground">{progressLabel}</p>
       )}
-      <div className="h-2 w-full rounded-full bg-muted" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
+      <div className="h-2 w-full rounded-full bg-muted" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} aria-valuetext={progressLabel ?? `${progressPercent}%`}>
         <div
           className="h-2 rounded-full bg-primary transition-all duration-300"
           style={{ width: `${fillWidth}%` }}

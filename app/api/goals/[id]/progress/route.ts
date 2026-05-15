@@ -5,6 +5,9 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_DISPLAYED_PERCENT = 150;
+
 function computeStreak(
   checkinDates: string[],
   todayUtc: string
@@ -40,7 +43,7 @@ function buildProgressLabel(
     return `$${currentValue.toFixed(0)} / $${targetValue.toFixed(0)}`;
   }
   if (domain === "wellness") {
-    return `${currentValue.toFixed(1)} hrs avg`;
+    return `${currentValue.toFixed(1)} / ${targetValue.toFixed(1)} hrs avg`;
   }
   return `${currentValue.toFixed(1)} / ${targetValue.toFixed(1)}`;
 }
@@ -60,6 +63,13 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   const { id } = await params;
+
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json(
+      { error: { code: "NOT_FOUND", message: "Goal not found" } },
+      { status: 404 }
+    );
+  }
 
   const { data: goal, error: goalError } = await supabase
     .from("goals")
@@ -151,7 +161,7 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   const rawPercent = (currentValue / targetValue) * 100;
-  const progressPercent = Math.min(Math.round(rawPercent), 150);
+  const progressPercent = Math.min(Math.round(rawPercent), MAX_DISPLAYED_PERCENT);
   const progressLabel = buildProgressLabel(goal.domain as string, currentValue, targetValue);
 
   return NextResponse.json({

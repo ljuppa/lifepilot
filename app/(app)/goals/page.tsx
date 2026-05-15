@@ -59,18 +59,26 @@ export default function GoalsPage() {
         setIsLoading(false);
 
         if (loadedGoals.length > 0) {
-          const results = await Promise.all(
+          const settled = await Promise.allSettled(
             loadedGoals.map((g) =>
-              fetch(`/api/goals/${g.id}/progress`).then((r) => r.json())
+              fetch(`/api/goals/${g.id}/progress`).then((r) => {
+                if (!r.ok) throw new Error(`${r.status}`);
+                return r.json();
+              })
             )
           );
           if (cancelled) return;
           const map: Record<string, GoalProgress> = {};
-          results.forEach((r, i) => {
-            if (r.data) map[loadedGoals[i].id] = r.data;
+          settled.forEach((result, i) => {
+            if (result.status === "fulfilled" && result.value?.data) {
+              map[loadedGoals[i].id] = result.value.data;
+            }
           });
           setProgressMap(map);
-          setStreakDays(results[0]?.data?.streakDays ?? 0);
+          const firstFulfilled = settled.find((r) => r.status === "fulfilled") as
+            | PromiseFulfilledResult<{ data: GoalProgress }>
+            | undefined;
+          setStreakDays(firstFulfilled?.value?.data?.streakDays ?? 0);
         }
       });
     return () => { cancelled = true; };

@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   ProfileStep1Schema,
   ProfileStep2Schema,
-  GoalInputSchema,
   ProfileStep4Schema,
   ProfileConsentSchema,
   ProfileUpdateSchema,
 } from "@/lib/validation/profile";
+import { GoalInputSchema } from "@/lib/validation/goal";
 
 describe("ProfileStep1Schema", () => {
   it("accepts valid profile step 1", () => {

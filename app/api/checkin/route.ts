@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { GoalInputSchema } from "@/lib/validation/goal";
+import { CheckinSchema } from "@/lib/validation/checkin";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   const supabase = await createClient();
@@ -13,15 +14,15 @@ export async function GET() {
   }
 
   const { data, error } = await supabase
-    .from("goals")
+    .from("checkins")
     .select("*")
     .eq("user_id", user.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: true });
+    .order("checked_in_at", { ascending: false })
+    .limit(90);
 
   if (error) {
     return NextResponse.json(
-      { error: { code: "DB_ERROR", message: "Failed to fetch goals." } },
+      { error: { code: "DB_ERROR", message: "Failed to fetch check-ins." } },
       { status: 500 }
     );
   }
@@ -39,12 +40,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: unknown;
-  try { body = await request.json(); } catch {
-    return NextResponse.json({ error: { code: "INVALID_REQUEST", message: "Invalid JSON." } }, { status: 400 });
+  const { ok, retryAfterSeconds } = await checkRateLimit(`checkin:${user.id}`, 10);
+  if (!ok) {
+    return NextResponse.json(
+      { error: { code: "RATE_LIMITED", message: "Too many check-ins. Please try again later." } },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
-  const parsed = GoalInputSchema.safeParse(body);
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: { code: "INVALID_REQUEST", message: "Invalid JSON." } },
+      { status: 400 }
+    );
+  }
+
+  const parsed = CheckinSchema.safeParse(body);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return NextResponse.json(
@@ -53,29 +67,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check active goal limit
-  const { count } = await supabase
-    .from("goals")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "active");
+  const checkedInAt = parsed.data.checked_in_at ?? new Date().toISOString();
 
-  if ((count ?? 0) >= 3) {
+  // Reject stale checkins (older than 24 hours — used by offline sync)
+  const age = Date.now() - new Date(checkedInAt).getTime();
+  if (age > 24 * 60 * 60 * 1000) {
     return NextResponse.json(
-      { error: { code: "GOAL_LIMIT", message: "You've reached the maximum of 3 active goals." } },
-      { status: 400 }
+      { error: { code: "STALE_CHECKIN", message: "Check-in is too old to submit." } },
+      { status: 422 }
     );
   }
 
   const { data, error } = await supabase
-    .from("goals")
-    .insert({ user_id: user.id, ...parsed.data })
+    .from("checkins")
+    .insert({ user_id: user.id, ...parsed.data, checked_in_at: checkedInAt })
     .select()
     .single();
 
   if (error) {
     return NextResponse.json(
-      { error: { code: "DB_ERROR", message: "Failed to create goal." } },
+      { error: { code: "DB_ERROR", message: "Failed to save check-in." } },
       { status: 500 }
     );
   }

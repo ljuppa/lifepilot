@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rl = checkRateLimit(`sign-in:${ip}`, 5);
+  const rl = await checkRateLimit(`sign-in:${ip}`, 5);
   if (!rl.ok) {
     return NextResponse.json(
       { error: { code: "RATE_LIMITED", message: "Too many sign-in attempts — please wait 15 minutes." } },

@@ -9,8 +9,8 @@ import {
   ProfileStep4Schema, ProfileConsentSchema,
   type ProfileStep1Input, type ProfileStep2Input,
   type ProfileStep4Input,
-  type GoalInput,
 } from "@/lib/validation/profile";
+import { type GoalInput } from "@/lib/validation/goal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

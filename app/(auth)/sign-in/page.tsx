@@ -9,11 +9,13 @@ import { SignInSchema, type SignInInput } from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CoachVoiceLine } from "@/components/ui/coach-voice-line";
 
 export default function SignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? "/dashboard";
+  const message = searchParams.get("message");
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,6 +68,12 @@ export default function SignInPage() {
             </Link>
           </p>
         </div>
+
+        {message === "account_deleted" && (
+          <CoachVoiceLine variant="closing">
+            Your account has been permanently deleted. We&apos;re sorry to see you go.
+          </CoachVoiceLine>
+        )}
 
         {serverError && (
           <div

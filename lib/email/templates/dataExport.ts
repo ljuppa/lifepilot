@@ -4,11 +4,21 @@ export interface DataExportEmailContext {
   appBaseUrl: string;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 export function buildDataExportEmail(ctx: DataExportEmailContext): {
   subject: string;
   html: string;
   text: string;
 } {
+  const safeUserName = escapeHtml(ctx.userName);
   return {
     subject: "Your LifePilot data export is ready",
     html: `<!DOCTYPE html>
@@ -16,7 +26,7 @@ export function buildDataExportEmail(ctx: DataExportEmailContext): {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#FAF9F6;font-family:system-ui,sans-serif;">
 <div style="max-width:600px;margin:0 auto;padding:32px 24px;">
-  <p style="font-family:Georgia,serif;font-size:20px;line-height:1.7;color:#2D3142;font-style:italic;margin:0 0 24px;">Hi ${ctx.userName},</p>
+  <p style="font-family:Georgia,serif;font-size:20px;line-height:1.7;color:#2D3142;font-style:italic;margin:0 0 24px;">Hi ${safeUserName},</p>
   <p style="font-size:16px;color:#2D3142;margin:0 0 16px;">Your LifePilot data export is ready to download. It includes your profile, goals, check-ins, briefings, and activity log.</p>
   <div style="text-align:center;margin:32px 0;">
     <a href="${ctx.downloadUrl}" style="display:inline-block;background:#46876A;color:#ffffff;font-size:15px;font-weight:600;padding:12px 28px;border-radius:8px;text-decoration:none;">Download your data</a>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { ProfileUpdateSchema } from "@/lib/validation/profile";
 
 export async function GET() {
@@ -108,4 +109,76 @@ export async function PATCH(request: NextRequest) {
   }
 
   return NextResponse.json({ data: { updated: true } });
+}
+
+export async function DELETE() {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
+      { status: 401 }
+    );
+  }
+
+  const userId = user.id;
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // 1. Audit log first — durable compliance record before any data is destroyed
+  const { error: auditError } = await adminClient
+    .from("audit_logs")
+    .insert({ user_id: userId, event_type: "account_deleted" });
+  if (auditError) {
+    return NextResponse.json(
+      { error: { code: "DB_ERROR", message: "Failed to initiate account deletion." } },
+      { status: 500 }
+    );
+  }
+
+  // 1b. Mark account as pending deletion so the broken state is detectable on re-login
+  //     if step 3 (deleteUser) fails after all table deletes have completed.
+  await adminClient
+    .from("profiles")
+    .update({ pending_deletion: true })
+    .eq("id", userId);
+
+  // 2. Hard-delete user data (sequential — order matters for GDPR compliance).
+  //    Any delete error stops execution immediately and returns 500.
+  const deleteStep = async (table: string) =>
+    (adminClient.from(table).delete().eq("user_id", userId)) as unknown as Promise<{ error: { message: string } | null }>;
+
+  for (const table of ["checkins", "briefings", "goals", "audit_logs"]) {
+    const { error } = await deleteStep(table);
+    if (error) {
+      console.error(JSON.stringify({ event: "account_deletion_failed", step: `delete_${table}`, code: error.message }));
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: { code: "DB_ERROR", message: "Failed to delete account data. Please try again." } },
+        { status: 500 }
+      );
+    }
+  }
+
+  // 3. Delete auth user — cascades to profiles row (which has pending_deletion=true)
+  const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+  if (deleteError) {
+    // Profile still exists with pending_deletion=true — detectable on next sign-in
+    console.error(JSON.stringify({ event: "account_deletion_failed", step: "delete_auth_user", code: deleteError.message }));
+    await supabase.auth.signOut();
+    return NextResponse.json(
+      { error: { code: "DB_ERROR", message: "Failed to complete account deletion. Please visit your data page to retry." } },
+      { status: 500 }
+    );
+  }
+
+  // 4. Clear session cookie
+  await supabase.auth.signOut();
+
+  // 5. Durable audit trail in logs (DB row was deleted above)
+  console.log(JSON.stringify({ event: "account_deleted", userId }));
+
+  return NextResponse.json({ data: { deleted: true } });
 }

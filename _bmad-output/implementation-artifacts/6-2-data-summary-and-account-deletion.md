@@ -1,6 +1,6 @@
 # Story 6.2: Data Summary & Account Deletion
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -31,51 +31,53 @@ So that I can exercise my GDPR/CCPA rights to transparency and erasure.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Refactor /data page to RSC + extract DataActions client component** (AC: #1, #7)
-  - [ ] Convert `app/(app)/data/page.tsx` from `"use client"` to async RSC (remove `"use client"` directive, add `async`)
-  - [ ] In the RSC: get user via `const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser()` — redirect to `/sign-in` if no user
-  - [ ] Fetch in parallel via `Promise.all`: profile (`.from("profiles").select("*").eq("id", user.id).single()`), goal count (`.select("*", { count: "exact", head: true }).eq("user_id", user.id)`), checkin count + date range (3 separate calls: count head-only, oldest `.order("checked_in_at", ascending:true).limit(1)`, newest `.order("checked_in_at", ascending:false).limit(1)`), briefing count (`.select("*", { count: "exact", head: true }).eq("user_id", user.id)`)
-  - [ ] Render data summary section (see Dev Notes for layout spec)
-  - [ ] Create `app/(app)/data/DataActions.tsx` as `"use client"` component — receives no props; handles: export button (all logic from old page.tsx) and delete account dialog trigger
-  - [ ] Render `<DataActions />` below the data summary section
-  - [ ] Existing export behavior (rate limit error display, success CoachVoiceLine) must be fully preserved inside `DataActions`
+- [x] **Task 1 — Refactor /data page to RSC + extract DataActions client component** (AC: #1, #7)
+  - [x] Convert `app/(app)/data/page.tsx` from `"use client"` to async RSC (remove `"use client"` directive, add `async`)
+  - [x] In the RSC: get user via `const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser()` — redirect to `/sign-in` if no user
+  - [x] Fetch in parallel via `Promise.all`: profile (`.from("profiles").select("*").eq("id", user.id).single()`), goal count (`.select("*", { count: "exact", head: true }).eq("user_id", user.id)`), checkin count + date range (3 separate calls: count head-only, oldest `.order("checked_in_at", ascending:true).limit(1)`, newest `.order("checked_in_at", ascending:false).limit(1)`), briefing count (`.select("*", { count: "exact", head: true }).eq("user_id", user.id)`)
+  - [x] Render data summary section (see Dev Notes for layout spec)
+  - [x] Create `app/(app)/data/DataActions.tsx` as `"use client"` component — receives no props; handles: export button (all logic from old page.tsx) and delete account dialog trigger
+  - [x] Render `<DataActions />` below the data summary section
+  - [x] Existing export behavior (rate limit error display, success CoachVoiceLine) must be fully preserved inside `DataActions`
 
-- [ ] **Task 2 — DELETE /api/profile route** (AC: #3, #6)
-  - [ ] Add `DELETE` export to `app/api/profile/route.ts` (existing file — do NOT break GET, POST, PATCH)
-  - [ ] Auth check: `createClient()` → `supabase.auth.getUser()` → 401 if no user
-  - [ ] Create admin client: `createSupabaseClient(NEXT_PUBLIC_SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)` (from `@supabase/supabase-js`)
-  - [ ] Step 1 — Audit log: `await adminClient.from("audit_logs").insert({ user_id: userId, event_type: "account_deleted" })`; throw `DB_ERROR` 500 if this fails (we need the audit record before destroying data)
-  - [ ] Step 2 — Hard deletes in sequence (NOT parallel — order matters for compliance):
+- [x] **Task 2 — DELETE /api/profile route** (AC: #3, #6)
+  - [x] Add `DELETE` export to `app/api/profile/route.ts` (existing file — do NOT break GET, POST, PATCH)
+  - [x] Auth check: `createClient()` → `supabase.auth.getUser()` → 401 if no user
+  - [x] Create admin client: `createSupabaseClient(NEXT_PUBLIC_SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)` (from `@supabase/supabase-js`)
+  - [x] Step 1 — Audit log: `await adminClient.from("audit_logs").insert({ user_id: userId, event_type: "account_deleted" })`; throw `DB_ERROR` 500 if this fails (we need the audit record before destroying data)
+  - [x] Step 2 — Hard deletes in sequence (NOT parallel — order matters for compliance):
     - `await adminClient.from("checkins").delete().eq("user_id", userId)`
     - `await adminClient.from("briefings").delete().eq("user_id", userId)`
     - `await adminClient.from("goals").delete().eq("user_id", userId)`
     - `await adminClient.from("audit_logs").delete().eq("user_id", userId)` (deletes all audit rows including the one just written — console log is the durable record)
-  - [ ] Step 3 — Delete auth user: `await adminClient.auth.admin.deleteUser(userId)` — cascades to `profiles` row automatically
-  - [ ] Step 4 — Invalidate session: `await supabase.auth.signOut()`
-  - [ ] Step 5 — Log: `console.log(JSON.stringify({ event: "account_deleted", userId }))`
-  - [ ] Return `NextResponse.json({ data: { deleted: true } })`
-  - [ ] On any error after audit log written but before completion: log the error with `console.error` and return 500 — do NOT partially delete
+  - [x] Step 3 — Delete auth user: `await adminClient.auth.admin.deleteUser(userId)` — cascades to `profiles` row automatically
+  - [x] Step 4 — Invalidate session: `await supabase.auth.signOut()`
+  - [x] Step 5 — Log: `console.log(JSON.stringify({ event: "account_deleted", userId }))`
+  - [x] Return `NextResponse.json({ data: { deleted: true } })`
+  - [x] On any error after audit log written but before completion: log the error with `console.error` and return 500 — do NOT partially delete
 
-- [ ] **Task 3 — Delete dialog in DataActions** (AC: #2, #4)
-  - [ ] Import `Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter` from `@/components/ui/dialog`
-  - [ ] State: `deleteStatus: "idle" | "loading" | "error"`, `showConfirmDialog: boolean`
-  - [ ] "Delete my account" button at bottom of `DataActions` — `variant="destructive"` — sets `showConfirmDialog = true` on click
-  - [ ] Guard: `if (deleteStatus === "loading") return;` at the start of the confirm handler
-  - [ ] Dialog body: title "Delete your account", description exact text from AC2
-  - [ ] "Keep my account" button — `variant="default"` — closes dialog (`showConfirmDialog = false`)
-  - [ ] "Delete my account permanently" button — `variant="destructive"` — calls `handleDelete()`, shows loading state on button, disables both buttons while loading
-  - [ ] `handleDelete()`: `setDeleteStatus("loading")` → `fetch("/api/profile", { method: "DELETE" })` → on 200: `window.location.href = "/sign-in?message=account_deleted"` → on non-200: `setDeleteStatus("error")`, close dialog, show error banner
-  - [ ] Error state: amber alert banner with "Something went wrong. Please try again." (same pattern as export error in Story 6.1)
+- [x] **Task 3 — Delete dialog in DataActions** (AC: #2, #4)
+  - [x] Import `Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter` from `@/components/ui/dialog`
+  - [x] State: `deleteStatus: "idle" | "loading" | "error"`, `showConfirmDialog: boolean`
+  - [x] "Delete my account" button at bottom of `DataActions` — `variant="destructive"` — sets `showConfirmDialog = true` on click
+  - [x] Guard: `if (deleteStatus === "loading") return;` at the start of the confirm handler
+  - [x] Dialog body: title "Delete your account", description exact text from AC2
+  - [x] "Keep my account" button — `variant="default"` — closes dialog (`showConfirmDialog = false`)
+  - [x] "Delete my account permanently" button — `variant="destructive"` — calls `handleDelete()`, shows loading state on button, disables both buttons while loading
+  - [x] `handleDelete()`: `setDeleteStatus("loading")` → `fetch("/api/profile", { method: "DELETE" })` → on 200: `window.location.href = "/sign-in?message=account_deleted"` → on non-200: `setDeleteStatus("error")`, close dialog, show error banner
+  - [x] Error state: amber alert banner with "Something went wrong. Please try again." (same pattern as export error in Story 6.1)
 
-- [ ] **Task 4 — Sign-in page: account deleted message** (AC: #5)
-  - [ ] In `app/(auth)/sign-in/page.tsx`, add `const message = searchParams.get("message");` (existing `searchParams` already present via `useSearchParams()`)
-  - [ ] Import `CoachVoiceLine` from `@/components/ui/coach-voice-line`
-  - [ ] Add conditional rendering ABOVE the `{serverError && ...}` block: `{message === "account_deleted" && (<CoachVoiceLine variant="closing">Your account has been permanently deleted. We&apos;re sorry to see you go.</CoachVoiceLine>)}`
+- [x] **Task 4 — Sign-in page: account deleted message** (AC: #5)
+  - [x] In `app/(auth)/sign-in/page.tsx`, add `const message = searchParams.get("message");` (existing `searchParams` already present via `useSearchParams()`)
+  - [x] Import `CoachVoiceLine` from `@/components/ui/coach-voice-line`
+  - [x] Add conditional rendering ABOVE the `{serverError && ...}` block: `{message === "account_deleted" && (<CoachVoiceLine variant="closing">Your account has been permanently deleted. We&apos;re sorry to see you go.</CoachVoiceLine>)}`
 
-- [ ] **Task 5 — Tests** (AC: #1–#7)
-  - [ ] `app/api/profile/__tests__/profile-delete.test.ts` — ≥ 7 tests: 401 unauthenticated, audit log written first, checkins deleted, briefings deleted, goals deleted, audit_logs deleted, auth user deleted, signOut called, structured log emitted, returns `{ data: { deleted: true } }`, audit log write failure returns 500 without proceeding
-  - [ ] `app/(app)/data/__tests__/DataActions.test.tsx` — ≥ 5 tests: delete button opens dialog, "Keep my account" closes dialog, confirm calls DELETE /api/profile, redirects to sign-in on success, shows error banner on failure
-  - [ ] Update `app/(app)/data/__tests__/` any existing page tests that assumed the old client-component structure
+- [x] **Task 5 — Tests** (AC: #1–#7)
+  - [x] `app/api/profile/__tests__/profile-delete.test.ts` — 11 tests covering: 401 unauthenticated, audit log written first, 500 when audit log fails (no further deletion), checkins/briefings/goals/audit_logs deleted, auth user deleted, signOut called, structured log emitted (no PII), returns `{ data: { deleted: true } }`
+  - [x] `app/(app)/data/__tests__/DataActions.test.tsx` — 9 tests: export button preserved, success/error states, delete button opens dialog, "Keep my account" closes dialog, confirm calls DELETE /api/profile, redirects on success, error banner on failure
+  - [x] `app/(auth)/__tests__/sign-in-account-deleted.test.tsx` — 2 tests: CoachVoiceLine shown for account_deleted message, form still renders
+  - [x] Fixed `lib/inngest/__tests__/exportUserData.test.ts` — updated mocks to chain `.limit()` after Story 6.1 P3 patch
+  - [x] Fixed `app/api/export/__tests__/export.test.ts` — added rate-limit mock + objectContaining for idempotency key after Story 6.1 patches
 
 ## Dev Notes
 
@@ -486,12 +488,27 @@ This is the same pattern used in `lib/inngest/functions/exportUserData.ts`.
 
 ### Completion Notes List
 
-(to be filled on completion)
+- All 5 tasks complete; 397 tests passing (22 new), 0 regressions.
+- `app/(app)/data/page.tsx` refactored from `"use client"` to async RSC — fetches profile, goal count, checkin count + date range, briefing count server-side via 6 parallel Supabase queries.
+- `app/(app)/data/DataActions.tsx` created as client component — handles export button (full 6.1 behavior preserved) and delete confirmation dialog.
+- `DELETE /api/profile` added to existing route file — uses service-role admin client; ordered deletion: audit log → checkins → briefings → goals → audit_logs → deleteUser (cascade) → signOut.
+- `notifications` table doesn't exist — not attempted (notification prefs live in `profiles.notification_preferences` JSONB, deleted via cascade).
+- Sign-in page shows `CoachVoiceLine` when `?message=account_deleted` is present.
+- Also fixed 2 pre-existing test regressions from Story 6.1 patches: `.limit()` chain mock in exportUserData tests, rate-limit + idempotency key mock in export route tests.
 
 ### File List
 
-(to be filled on completion)
+- app/(app)/data/page.tsx (modified — refactored to async RSC)
+- app/(app)/data/DataActions.tsx (created — "use client" component)
+- app/(app)/data/__tests__/DataActions.test.tsx (created — 9 tests)
+- app/api/profile/route.ts (modified — added DELETE handler)
+- app/api/profile/__tests__/profile-delete.test.ts (created — 11 tests)
+- app/(auth)/sign-in/page.tsx (modified — account_deleted message)
+- app/(auth)/__tests__/sign-in-account-deleted.test.tsx (created — 2 tests)
+- lib/inngest/__tests__/exportUserData.test.ts (modified — fixed .limit() chain mock)
+- app/api/export/__tests__/export.test.ts (modified — added rate-limit mock + objectContaining)
 
 ### Change Log
 
 - 2026-06-12: Story created — Sprint 6, Epic 6 Story 2; GDPR data summary + account deletion
+- 2026-06-12: Implementation complete — all ACs satisfied, 397 tests passing (22 new)

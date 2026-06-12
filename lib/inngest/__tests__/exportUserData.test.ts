@@ -20,11 +20,15 @@ const mockProfileQuery = {
   single: vi.fn().mockResolvedValue({ data: { id: "user-123", full_name: "Alice" }, error: null }),
 };
 
-const mockListQuery = (data: unknown[]) => ({
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  order: vi.fn().mockResolvedValue({ data, error: null }),
-});
+// Each list query now chains: .select().eq().order().limit() (or .eq().limit() for goals)
+const mockListQuery = (data: unknown[]) => {
+  const resolved = { data, error: null };
+  const limitMock = vi.fn().mockResolvedValue(resolved);
+  const orderMock = vi.fn().mockReturnValue({ limit: limitMock });
+  const eqMock = vi.fn().mockReturnValue({ order: orderMock, limit: limitMock });
+  const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
+  return { select: selectMock, eq: eqMock, order: orderMock, limit: limitMock };
+};
 
 const mockGoalsQuery = mockListQuery([{ id: "g1", title: "Run daily" }]);
 const mockCheckinsQuery = mockListQuery([{ id: "c1", mood: 4 }]);
@@ -106,10 +110,10 @@ describe("exportUserData Inngest function", () => {
       data: { id: "user-123", full_name: "Alice" },
       error: null,
     });
-    vi.mocked(mockGoalsQuery.order).mockResolvedValue({ data: [{ id: "g1" }], error: null });
-    vi.mocked(mockCheckinsQuery.order).mockResolvedValue({ data: [{ id: "c1" }], error: null });
-    vi.mocked(mockBriefingsQuery.order).mockResolvedValue({ data: [{ id: "b1" }], error: null });
-    vi.mocked(mockAuditQuery.order).mockResolvedValue({ data: [{ id: "a1" }], error: null });
+    vi.mocked(mockGoalsQuery.limit).mockResolvedValue({ data: [{ id: "g1" }], error: null });
+    vi.mocked(mockCheckinsQuery.limit).mockResolvedValue({ data: [{ id: "c1" }], error: null });
+    vi.mocked(mockBriefingsQuery.limit).mockResolvedValue({ data: [{ id: "b1" }], error: null });
+    vi.mocked(mockAuditQuery.limit).mockResolvedValue({ data: [{ id: "a1" }], error: null });
   });
 
   it("fetches all 5 data types and assembles the payload", async () => {

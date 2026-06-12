@@ -5,6 +5,10 @@ vi.mock("@/lib/inngest/client", () => ({
   inngest: { send: vi.fn().mockResolvedValue(undefined) },
 }));
 
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ ok: true, retryAfterSeconds: 0 }),
+}));
+
 const mockInsert = vi.fn().mockResolvedValue({ error: null });
 const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert });
 const mockGetUser = vi.fn();
@@ -56,10 +60,12 @@ describe("POST /api/export", () => {
     const POST = await getHandler();
     await POST();
 
-    expect(inngest.send).toHaveBeenCalledWith({
-      name: "export/data.requested",
-      data: { userId: "user-123", triggeredAt: expect.any(String) },
-    });
+    expect(inngest.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "export/data.requested",
+        data: expect.objectContaining({ userId: "user-123", triggeredAt: expect.any(String) }),
+      })
+    );
   });
 
   it("inserts audit log row when authenticated", async () => {

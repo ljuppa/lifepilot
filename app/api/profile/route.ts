@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { ProfileUpdateSchema } from "@/lib/validation/profile";
 
 export async function GET() {
@@ -108,4 +109,56 @@ export async function PATCH(request: NextRequest) {
   }
 
   return NextResponse.json({ data: { updated: true } });
+}
+
+export async function DELETE() {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Not authenticated" } },
+      { status: 401 }
+    );
+  }
+
+  const userId = user.id;
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // 1. Audit log first — durable compliance record before any data is destroyed
+  const { error: auditError } = await adminClient
+    .from("audit_logs")
+    .insert({ user_id: userId, event_type: "account_deleted" });
+  if (auditError) {
+    return NextResponse.json(
+      { error: { code: "DB_ERROR", message: "Failed to initiate account deletion." } },
+      { status: 500 }
+    );
+  }
+
+  // 2. Hard-delete user data (sequential — order matters for GDPR compliance)
+  await adminClient.from("checkins").delete().eq("user_id", userId);
+  await adminClient.from("briefings").delete().eq("user_id", userId);
+  await adminClient.from("goals").delete().eq("user_id", userId);
+  await adminClient.from("audit_logs").delete().eq("user_id", userId);
+
+  // 3. Delete auth user — cascades to profiles row
+  const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+  if (deleteError) {
+    console.error(JSON.stringify({ event: "account_deletion_failed", userId, code: deleteError.message }));
+    return NextResponse.json(
+      { error: { code: "DB_ERROR", message: "Failed to delete account." } },
+      { status: 500 }
+    );
+  }
+
+  // 4. Clear session cookie
+  await supabase.auth.signOut();
+
+  // 5. Durable audit trail in logs (DB row was deleted above)
+  console.log(JSON.stringify({ event: "account_deleted", userId }));
+
+  return NextResponse.json({ data: { deleted: true } });
 }

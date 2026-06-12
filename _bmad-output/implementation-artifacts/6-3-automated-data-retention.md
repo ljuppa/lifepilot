@@ -1,6 +1,6 @@
 # Story 6.3: Automated Data Retention
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -22,22 +22,22 @@ So that the platform complies with GDPR Art. 5(1)(e) without manual intervention
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Migration: add `idx_checkins_checked_in_at` index** (AC: #5)
-  - [ ] Create `supabase/migrations/010_retention_indexes.sql`
-  - [ ] Add `CREATE INDEX IF NOT EXISTS idx_checkins_checked_in_at ON public.checkins (checked_in_at);`
-  - [ ] Do NOT add `idx_briefings_briefing_date` — it already exists in `006_briefings.sql`
-  - [ ] Verify migration file name is the next in sequence (010_)
+- [x] **Task 1 — Migration: add `idx_checkins_checked_in_at` index** (AC: #5)
+  - [x] Create `supabase/migrations/010_retention_indexes.sql`
+  - [x] Add `create index if not exists idx_checkins_checked_in_at on public.checkins (checked_in_at);`
+  - [x] Do NOT add `idx_briefings_briefing_date` — it already exists in `006_briefings.sql`
+  - [x] Verify migration file name is the next in sequence (010_)
 
-- [ ] **Task 2 — Tests for `retentionCleanup`** (AC: #1–#4)
-  - [ ] Create `lib/inngest/__tests__/retentionCleanup.test.ts`
-  - [ ] Test: `delete-stale-data` step calls checkins delete with correct cutoff (`< twelveMonthsAgo`)
-  - [ ] Test: `delete-stale-data` step calls briefings delete with correct cutoff (`< sixMonthsAgo` date string)
-  - [ ] Test: both deletes run in the same step (inside `step.run("delete-stale-data", ...)`)
-  - [ ] Test: function returns `{ checkinsDeleted, briefingsDeleted, ranAt }` with correct counts
-  - [ ] Test: structured log `{ event: "retention_cleanup_complete", checkinsDeleted, briefingsDeleted, ranAt }` is emitted
-  - [ ] Test: no user IDs or personal data appear in log output
-  - [ ] Test: service-role client used (not SSR session client) — verify `SUPABASE_SERVICE_ROLE_KEY` env var consumed
-  - [ ] Run full test suite to confirm no regressions
+- [x] **Task 2 — Tests for `retentionCleanup`** (AC: #1–#4)
+  - [x] Create `lib/inngest/__tests__/retentionCleanup.test.ts`
+  - [x] Test: `delete-stale-data` step calls checkins delete with correct cutoff (`< twelveMonthsAgo`)
+  - [x] Test: `delete-stale-data` step calls briefings delete with correct cutoff (`< sixMonthsAgo` date string)
+  - [x] Test: both deletes run in the same step (inside `step.run("delete-stale-data", ...)`)
+  - [x] Test: function returns `{ checkinsDeleted, briefingsDeleted, ranAt }` with correct counts
+  - [x] Test: structured log `{ event: "retention_cleanup_complete", checkinsDeleted, briefingsDeleted, ranAt }` is emitted
+  - [x] Test: no user IDs or personal data appear in log output
+  - [x] Test: service-role client used (not SSR session client) — verify `SUPABASE_SERVICE_ROLE_KEY` env var consumed
+  - [x] Run full test suite to confirm no regressions
 
 ## Dev Notes
 
@@ -189,18 +189,26 @@ The Inngest client must be mocked to allow function invocation in tests. Follow 
 
 ### Debug Log
 
-_(empty)_
+- Ran new test in isolation: `npx vitest run lib/inngest/__tests__/retentionCleanup.test.ts` → 7 passed.
+- Ran full suite: `npx vitest run` → 46 files, 404 tests passed (no regressions).
+- `npm run type-check` → clean. `npx eslint` on new files → clean (pre-existing lint error in `components/goals/StreakBadge.tsx` is unrelated to this story).
 
 ### Completion Notes
 
-_(empty)_
+- **Task 1**: Added `supabase/migrations/010_retention_indexes.sql` with a standalone `idx_checkins_checked_in_at` index. The existing composite `idx_checkins_user_id_date` (004) cannot serve the retention DELETE because that query filters only on `checked_in_at` with no `user_id` predicate. `idx_briefings_briefing_date` already existed in 006, so it was intentionally not duplicated. Used `create index if not exists` to keep the migration idempotent.
+- **Task 2**: Added `lib/inngest/__tests__/retentionCleanup.test.ts` (7 tests). Used `vi.useFakeTimers()` pinned to `2025-06-01T00:00:00.000Z` for deterministic cutoff assertions: checkins cutoff `2024-06-01T00:00:00.000Z`, briefings cutoff `2024-12-01` (date-only). Verified: correct cutoffs, single `delete-stale-data` step, returned counts + ISO `ranAt`, idempotent zero-count handling, service-role client built from env credentials, and a structured `retention_cleanup_complete` log with exactly `{ event, checkinsDeleted, briefingsDeleted, ranAt }` and no PII fields.
+- The `retentionCleanup` function itself (`lib/inngest/functions/retentionCleanup.ts`) and its registration in `app/api/inngest/route.ts` were already complete (AC1–AC4) and were not modified.
 
 ## File List
 
-_(to be filled during implementation)_
+- `supabase/migrations/010_retention_indexes.sql` (new)
+- `lib/inngest/__tests__/retentionCleanup.test.ts` (new)
+- `_bmad-output/implementation-artifacts/6-3-automated-data-retention.md` (updated — status, tasks, dev record)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated — 6-3 status)
 
 ## Change Log
 
-| Date       | Change                                      |
-|------------|---------------------------------------------|
-| 2026-06-12 | Story created (ready-for-dev)               |
+| Date       | Change                                                          |
+|------------|----------------------------------------------------------------|
+| 2026-06-12 | Story created (ready-for-dev)                                  |
+| 2026-06-12 | Implemented Task 1 (retention index migration) + Task 2 (7 tests); status → review |

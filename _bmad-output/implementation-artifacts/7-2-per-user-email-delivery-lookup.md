@@ -1,6 +1,6 @@
 # Story 7.2: Per-User Email Delivery Lookup
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -38,48 +38,48 @@ So that I can diagnose delivery failures and support issues without accessing PI
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Migration 014 — `reengagement_notifications` table**
-  - [ ] Create `supabase/migrations/014_reengagement_notifications.sql`
-  - [ ] Table schema: `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`, `sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`, `email_status TEXT NOT NULL CHECK (email_status IN ('delivered', 'failed'))`, `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
-  - [ ] Create index: `CREATE INDEX IF NOT EXISTS idx_reengagement_notifications_user_id_sent_at ON public.reengagement_notifications(user_id, sent_at DESC)`
-  - [ ] Enable RLS: `ALTER TABLE public.reengagement_notifications ENABLE ROW LEVEL SECURITY` (no user-facing policy needed — admin-only via service role)
-  - [ ] Grant permissions: `GRANT SELECT ON public.reengagement_notifications TO service_role`
+- [x] **Task 1: Migration 014 — `reengagement_notifications` table**
+  - [x] Create `supabase/migrations/014_reengagement_notifications.sql`
+  - [x] Table schema: `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`, `sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`, `email_status TEXT NOT NULL CHECK (email_status IN ('delivered', 'failed'))`, `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+  - [x] Create index: `CREATE INDEX IF NOT EXISTS idx_reengagement_notifications_user_id_sent_at ON public.reengagement_notifications(user_id, sent_at DESC)`
+  - [x] Enable RLS: `ALTER TABLE public.reengagement_notifications ENABLE ROW LEVEL SECURITY` (no user-facing policy needed — admin-only via service role)
+  - [x] Grant permissions: `GRANT SELECT ON public.reengagement_notifications TO service_role`
 
-- [ ] **Task 2: Zod validation schema**
-  - [ ] Create `lib/validation/admin.ts`
-  - [ ] Write failing test: invalid UUID returns `{ success: false }`, valid UUID returns `{ success: true }`
-  - [ ] Implement `AdminUserLookupSchema = z.object({ userId: z.string().uuid("userId must be a valid UUID") })`
-  - [ ] Export `AdminUserLookupInput = z.infer<typeof AdminUserLookupSchema>`
-  - [ ] Tests pass
+- [x] **Task 2: Zod validation schema**
+  - [x] Create `lib/validation/admin.ts`
+  - [x] Write failing test: invalid UUID returns `{ success: false }`, valid UUID returns `{ success: true }`
+  - [x] Implement `AdminUserLookupSchema = z.object({ userId: z.string().uuid("userId must be a valid UUID") })`
+  - [x] Export `AdminUserLookupInput = z.infer<typeof AdminUserLookupSchema>`
+  - [x] Tests pass
 
-- [ ] **Task 3: `GET /api/admin/users` route + tests**
-  - [ ] Write failing tests first: `app/api/admin/__tests__/users.test.ts`
-    - [ ] 500 CONFIG_ERROR when `SUPABASE_SERVICE_ROLE_KEY` absent
-    - [ ] 401 when unauthenticated
-    - [ ] 403 when role ≠ admin
-    - [ ] 400 VALIDATION_ERROR when `userId` absent
-    - [ ] 400 VALIDATION_ERROR when `userId` is not a valid UUID
-    - [ ] 404 NOT_FOUND when user not found in Auth
-    - [ ] 200 with correct `{ data: { accountStatus, briefings, reengagementNotifications, profileComplete } }` shape
-    - [ ] `accountStatus` is `"verified"` when `email_confirmed_at` is set
-    - [ ] `accountStatus` is `"unverified"` when `email_confirmed_at` is null
-    - [ ] `briefings` contains at most 10 records ordered by `briefing_date DESC`
-    - [ ] `reengagementNotifications` contains at most 5 records ordered by `sent_at DESC`
-    - [ ] `profileComplete` is `true` when profile row exists
-    - [ ] `profileComplete` is `false` when no profile row found
-    - [ ] Audit log insert called with `event_type: 'admin_user_lookup'` and correct metadata
-    - [ ] Structured log emitted on success (no PII in log)
-  - [ ] Implement `app/api/admin/users/route.ts`
-  - [ ] Run tests — all pass
+- [x] **Task 3: `GET /api/admin/users` route + tests**
+  - [x] Write failing tests first: `app/api/admin/__tests__/users.test.ts`
+    - [x] 500 CONFIG_ERROR when `SUPABASE_SERVICE_ROLE_KEY` absent
+    - [x] 401 when unauthenticated
+    - [x] 403 when role ≠ admin
+    - [x] 400 VALIDATION_ERROR when `userId` absent
+    - [x] 400 VALIDATION_ERROR when `userId` is not a valid UUID
+    - [x] 404 NOT_FOUND when user not found in Auth
+    - [x] 200 with correct `{ data: { accountStatus, briefings, reengagementNotifications, profileComplete } }` shape
+    - [x] `accountStatus` is `"verified"` when `email_confirmed_at` is set
+    - [x] `accountStatus` is `"unverified"` when `email_confirmed_at` is null
+    - [x] `briefings` contains at most 10 records ordered by `briefing_date DESC`
+    - [x] `reengagementNotifications` contains at most 5 records ordered by `sent_at DESC`
+    - [x] `profileComplete` is `true` when profile row exists
+    - [x] `profileComplete` is `false` when no profile row found
+    - [x] Audit log insert called with `event_type: 'admin_user_lookup'` and correct metadata
+    - [x] Structured log emitted on success (no PII in log)
+  - [x] Implement `app/api/admin/users/route.ts`
+  - [x] Run tests — all pass
 
-- [ ] **Task 4: Admin UI page + skeleton**
-  - [ ] Create `app/admin/users/loading.tsx` — skeleton placeholders for the result area
-  - [ ] Create `app/admin/users/page.tsx` — async RSC
-    - [ ] UUID input form (GET form, `action="/admin/users"`, `name="userId"`)
-    - [ ] If `userId` param present in searchParams: call `getAdminUserData(userId)` (extract helper or inline in page)
-    - [ ] Render result: account status badge, briefings table (date + status), re-engagement table (sent_at + status), profile complete badge
-    - [ ] Handle not-found: show "User not found" message
-    - [ ] No PII anywhere on the page
+- [x] **Task 4: Admin UI page + skeleton**
+  - [x] Create `app/admin/users/loading.tsx` — skeleton placeholders for the result area
+  - [x] Create `app/admin/users/page.tsx` — async RSC
+    - [x] UUID input form (GET form, `action="/admin/users"`, `name="userId"`)
+    - [x] If `userId` param present in searchParams: call `getAdminUserData(userId)` (extract helper or inline in page)
+    - [x] Render result: account status badge, briefings table (date + status), re-engagement table (sent_at + status), profile complete badge
+    - [x] Handle not-found: show "User not found" message
+    - [x] No PII anywhere on the page
 
 ## Dev Notes
 
@@ -444,31 +444,42 @@ Success:
 
 ### Implementation Plan
 
-_To be filled during implementation_
+TDD approach: wrote failing tests for validation schema and route handler before implementation. Fixed Zod v4 `.issues` property (not `.errors`). Used `Promise.all` for parallel briefings/reengagement/profile queries. Extracted `lib/admin/getUserData.ts` shared function to avoid internal HTTP fetch in UI page (lesson from Story 7.1).
 
 ### Debug Log
 
-_To be filled during implementation_
+- Zod v4 uses `.issues` not `.errors` on ZodError — fixed in route.ts line 54.
 
 ### Completion Notes
 
-_To be filled during implementation_
+- Migration 014: `reengagement_notifications` table with RLS enabled, index on `(user_id, sent_at DESC)`.
+- `lib/validation/admin.ts`: `AdminUserLookupSchema` with UUID validation; 5 tests all pass.
+- `app/api/admin/users/route.ts`: Full auth chain (env guard → auth → role check → UUID validation → getUserById → parallel queries → audit log → response); 15 tests all pass.
+- `lib/admin/getUserData.ts`: Shared function used by UI page to avoid internal HTTP fetch anti-pattern.
+- `app/admin/users/page.tsx`: GET form, async RSC, renders stat cards + briefings table + re-engagement table; handles not-found and validation errors; no PII.
+- `app/admin/users/loading.tsx`: Skeleton cards and table placeholders.
+- Full regression suite: 442 tests pass (was 422 before story, +20 new tests).
+- TypeScript: clean compile, no errors.
 
 ## File List
 
 ### New Files
 - `supabase/migrations/014_reengagement_notifications.sql`
 - `lib/validation/admin.ts`
+- `lib/validation/__tests__/admin.test.ts`
+- `lib/admin/getUserData.ts`
 - `app/api/admin/users/route.ts`
 - `app/api/admin/__tests__/users.test.ts`
 - `app/admin/users/page.tsx`
 - `app/admin/users/loading.tsx`
 
 ### Modified Files
-_To be filled during implementation_
+- `_bmad-output/implementation-artifacts/7-2-per-user-email-delivery-lookup.md` (this file)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 | Date | Change |
 |------|--------|
 | 2026-06-12 | Story created — ready-for-dev |
+| 2026-06-12 | Implementation complete — all 4 tasks done, 20 new tests pass, ready for review |

@@ -40,3 +40,13 @@
 - `briefing_date` written by Inngest assumes UTC server TZ — both the date filter and the date string derive from UTC midnight so they're consistent if the server TZ is UTC; operational constraint, not a code defect [app/api/admin/metrics/route.ts]
 - `NODE_ENV === "production"` protocol heuristic is fragile for staging/preview deployments — low risk for an internal loopback URL; consider using `NEXT_PUBLIC_APP_URL` or `x-forwarded-proto` header in a future hardening pass [app/admin/page.tsx]
 - StreakBadge `setTimeout(0)` code smell — required workaround for `react-hooks/set-state-in-effect` ESLint rule; revisit if the lint rule is relaxed [components/goals/StreakBadge.tsx]
+
+## Deferred from: code review of 7-2-per-user-email-delivery-lookup (2026-06-12)
+
+- TOCTOU: stale `authUser` if user deleted between `getUserById` and the `Promise.all` data queries — response returns `accountStatus: "verified"` for a deleted user; unlikely in practice, pre-existing pattern [lib/admin/getUserData.ts]
+- `getAdminUserData` has no built-in authz — relies entirely on `app/admin/layout.tsx` role guard; defence-in-depth gap if function is extracted for other callers; by design for current use [lib/admin/getUserData.ts]
+- Missing `.catch()` on fire-and-forget audit log insert — network rejection produces unhandled rejection warning; consistent with rest of codebase pattern [app/api/admin/users/route.ts:96]
+- `NEXT_PUBLIC_SUPABASE_URL!` non-null assertion in `getUserData.ts` — whole-app concern; if env var is absent the entire app is non-functional [lib/admin/getUserData.ts]
+- `profileComplete` semantically: row exists ≠ all fields populated — by design; onboarding wizard enforces all required fields before a profile row is created [lib/admin/getUserData.ts]
+- `AdminUserLookupSchema` accepts UUID v1/v3/v5/v8 in addition to v4/v7 — `z.string().uuid()` is standard Zod practice; low risk [lib/validation/admin.ts]
+- Audit log fire-and-forget can be lost on process termination — intrinsic to the pattern; consistent with export route and rest of codebase

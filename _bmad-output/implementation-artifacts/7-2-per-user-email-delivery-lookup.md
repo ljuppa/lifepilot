@@ -81,6 +81,22 @@ So that I can diagnose delivery failures and support issues without accessing PI
     - [x] Handle not-found: show "User not found" message
     - [x] No PII anywhere on the page
 
+### Review Findings
+
+- [ ] [Review][Patch][High] reengagementResult.error and profileResult.error silently ignored — only `briefingsResult.error` is checked in both `getUserData.ts` and `route.ts`; errors on the reengagement/profile queries are swallowed, returning `[]` / `false` as if data simply doesn't exist [lib/admin/getUserData.ts, app/api/admin/users/route.ts]
+- [ ] [Review][Patch][High] service_role has only SELECT grant on reengagement_notifications — no INSERT/UPDATE/DELETE; any future write (e.g. checkInactivity.ts) will fail silently [supabase/migrations/014_reengagement_notifications.sql]
+- [ ] [Review][Patch][High] Audit log never fires on the UI path — `getAdminUserData()` has no audit log; AC5 only satisfied when `/api/admin/users` is called directly, not when the admin page RSC calls the helper [lib/admin/getUserData.ts, app/admin/users/page.tsx]
+- [ ] [Review][Patch][Med] Auth API error conflated with user not found — `if (authUserError || !authUser?.user)` maps both a 5xx service error and a genuine absent user to 404 NOT_FOUND; admins see "User not found" during Supabase Auth outages [lib/admin/getUserData.ts:36, app/api/admin/users/route.ts:62]
+- [ ] [Review][Patch][Med] UUID validation fires after admin role DB query — AC2 says "no DB query is executed" for invalid userId; current order runs role check (DB round-trip) before validation [app/api/admin/users/route.ts:48-57]
+- [ ] [Review][Patch][Med] toLocaleString() without locale on server component — `new Date(n.sent_at).toLocaleString()` uses the server process locale; differs from client locale → React hydration mismatch warning [app/admin/users/page.tsx:84]
+- [x] [Review][Defer] TOCTOU: stale authUser if user deleted mid-request — user deleted between getUserById and Promise.all data queries; response returns "verified" for deleted user — pre-existing pattern, unlikely in practice [lib/admin/getUserData.ts]
+- [x] [Review][Defer] getAdminUserData has no built-in authz — relies entirely on admin layout guard; correct for current use but a defence-in-depth gap if extracted elsewhere — pre-existing by design
+- [x] [Review][Defer] Missing .catch() on fire-and-forget audit log — network rejection produces unhandled rejection warning; consistent with rest of codebase pattern [app/api/admin/users/route.ts:96]
+- [x] [Review][Defer] NEXT_PUBLIC_SUPABASE_URL non-null assertion in getUserData.ts — whole-app concern, not isolated to this story
+- [x] [Review][Defer] profileComplete semantically unreliable — row exists ≠ all fields populated; by design per onboarding enforcement [lib/admin/getUserData.ts]
+- [x] [Review][Defer] AdminUserLookupSchema accepts UUID v1/v3/v5/v8 in addition to v4/v7 — z.string().uuid() is standard practice, low risk [lib/validation/admin.ts]
+- [x] [Review][Defer] Audit log fire-and-forget can be lost on process termination — intrinsic to pattern, consistent with rest of codebase
+
 ## Dev Notes
 
 ### CRITICAL: `reengagement_notifications` table does not exist yet — Task 1 must run first

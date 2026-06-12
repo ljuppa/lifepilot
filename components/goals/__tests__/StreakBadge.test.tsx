@@ -32,6 +32,7 @@ describe("StreakBadge", () => {
   });
 
   it("adds animate-pulse on mount for milestone 7", async () => {
+    vi.useFakeTimers();
     vi.spyOn(window, "matchMedia").mockReturnValue({
       matches: false,
       addEventListener: vi.fn(),
@@ -39,8 +40,11 @@ describe("StreakBadge", () => {
     } as unknown as MediaQueryList);
 
     const { container } = render(<StreakBadge streakDays={7} />);
+    // Flush the setTimeout(0) that defers setPulse(true)
+    await act(async () => { vi.advanceTimersByTime(1); });
     const badge = container.querySelector("span");
     expect(badge?.className).toContain("animate-pulse");
+    vi.useRealTimers();
   });
 
   it("removes animate-pulse after 1500ms for milestone", async () => {
@@ -52,6 +56,8 @@ describe("StreakBadge", () => {
     } as unknown as MediaQueryList);
 
     const { container } = render(<StreakBadge streakDays={30} />);
+    // Flush the setTimeout(0) that defers setPulse(true)
+    await act(async () => { vi.advanceTimersByTime(1); });
     expect(container.querySelector("span")?.className).toContain("animate-pulse");
 
     await act(async () => { vi.advanceTimersByTime(1600); });

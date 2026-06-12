@@ -14,3 +14,10 @@
 - `greeting.slice(0, 100)` may cut mid-Unicode surrogate at byte 100 — cosmetic; low probability with English coaching text; fix with `[...text].slice(0,100).join("")` when internationalisation is needed
 - `text-slate-500` used for `wellness` domain in `BriefingCard` DOMAIN_FILL — not a design token; unify with the token system when design tokens are audited
 - 30-day briefing history cutoff computed with server-local `new Date()` — acceptable for daily granularity; consider explicit UTC arithmetic if the user base spans far-western timezones
+
+## Deferred from: code review of 6-1-personal-data-export (2026-06-12)
+
+- No DELETE policy on exports bucket — old export files accumulate indefinitely; add a storage lifecycle rule or a scheduled cleanup job in a future compliance story
+- `upsert:true` overwrite race on concurrent exports — low risk once timestamp-outside-steps is fixed (P2); revisit if concurrent export protection becomes a requirement
+- Missing `ALTER TABLE ENABLE RLS` in migration — Supabase Storage enables RLS on `storage.objects` automatically; not needed, noted for documentation clarity
+- `userId` from Inngest event payload not validated as UUID — always sourced from verified Supabase session in this flow; add Zod validation if event bus ever becomes externally accessible

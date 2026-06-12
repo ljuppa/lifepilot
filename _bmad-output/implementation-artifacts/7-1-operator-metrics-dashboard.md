@@ -62,6 +62,21 @@ Response shape: `{ data: { dau, briefingDeliveryRate, checkinRate, totalUsers } 
   - [x] Create `app/admin/page.tsx` — async RSC, fetches `GET /api/admin/metrics` server-side via absolute URL, renders 4 `StatCard` components
   - [x] Define inline `StatCard` component (number + label)
 
+### Review Follow-ups (AI)
+
+- [ ] [Review][Patch][High] PostgREST row limit silently truncates DAU — `.select("user_id").gte(...)` fetches all rows into memory; PostgREST's 1,000-row default cap makes `dau` and `checkinRate` silently wrong at scale. Fix: replace with a Supabase RPC `COUNT(DISTINCT user_id)`. [app/api/admin/metrics/route.ts:39-43]
+- [ ] [Review][Patch][High] All five Supabase query errors silently ignored — destructuring `{ data }` without checking `error` means DB failures return zeroed metrics rather than a 500. Fix: check each query's `error` field. [app/api/admin/metrics/route.ts:39-69]
+- [ ] [Review][Patch][Med] SSRF via unvalidated `Host` header in AdminPage internal fetch — `headersList.get("host")` without validation allows a crafted `Host` to exfiltrate the session cookie. Fix: use hardcoded loopback URL or call metrics function directly. [app/admin/page.tsx:21]
+- [ ] [Review][Patch][Med] AdminPage silently falls back to zeroes on non-2xx / non-JSON response — `res.json()` called unconditionally; 500 HTML response throws an unhandled exception crashing the RSC. Fix: check `res.ok` before calling `.json()`. [app/admin/page.tsx:29]
+- [ ] [Review][Patch][Med] Missing `SUPABASE_SERVICE_ROLE_KEY` returns 403 instead of 500 — `!` assertion passes `undefined` to the client; first DB query returns null; `profile?.role !== "admin"` → 403, masking misconfiguration. Fix: validate env var before constructing client. [app/api/admin/metrics/route.ts:17]
+- [ ] [Review][Patch][Low] Null profile from DB error silently redirects to `/dashboard` — `error` field from profile query not checked; DB error is indistinguishable from non-admin user. Fix: log the error before redirecting. [app/admin/layout.tsx:13]
+- [ ] [Review][Patch][Low] `briefingDeliveryRate` can exceed 100% — no clamp applied; data inconsistency can produce > 100. Fix: `Math.min(briefingDeliveryRate, 100)`. [app/api/admin/metrics/route.ts:67]
+- [ ] [Review][Patch][Low] Internal HTTP self-fetch should be direct function call — spec dev notes prescribe extracting metrics logic to shared server function; HTTP fetch adds latency, SSRF surface, and the `Host`-validation risk. [app/admin/page.tsx]
+- [x] [Review][Defer] `pending_deletion` users inflate `totalUsers` denominator — pre-existing data model; `checkinRate` is slightly imprecise during deletion window [app/api/admin/metrics/route.ts:47]
+- [x] [Review][Defer] `briefing_date` written by Inngest assumes UTC server TZ — pre-existing operational constraint; both fields derive from UTC midnight so consistent if server TZ is UTC [app/api/admin/metrics/route.ts:54-60]
+- [x] [Review][Defer] `NODE_ENV === "production"` protocol heuristic is fragile for staging/preview — pre-existing Next.js pattern; low risk for internal loopback [app/admin/page.tsx:22]
+- [x] [Review][Defer] StreakBadge `setTimeout(0)` code smell — required workaround for `react-hooks/set-state-in-effect` lint rule [components/goals/StreakBadge.tsx]
+
 ## Dev Notes
 
 ### CRITICAL: `role` column does not exist yet — migration 012 must be the first task
@@ -440,3 +455,27 @@ utils/supabase/server.ts   — no changes needed
 
 - 2026-06-12: Story created — Sprint 7, Epic 7 Story 1; operator metrics dashboard
 - 2026-06-12: Implementation complete — all ACs satisfied, 419 tests passing (10 new)
+
+## Senior Developer Review (AI)
+
+**Date:** 2026-06-12
+**Outcome:** Changes Requested
+**Layers:** Blind Hunter, Edge Case Hunter, Acceptance Auditor (all passed)
+
+### Summary
+
+- 2 High, 3 Medium, 3 Low patches
+- 4 deferred (pre-existing / operational)
+- 7 dismissed (false positives, defensive patterns)
+- All 6 ACs structurally satisfied; High/Med patches are reliability and security hardening
+
+### Action Items
+
+- [ ] [High] PostgREST row limit silently truncates DAU at ~1,000 rows — replace JS-Set dedup with COUNT(DISTINCT) RPC
+- [ ] [High] All 5 Supabase queries in route.ts silently swallow DB errors — add error checks + 500 responses
+- [ ] [Med] SSRF via unvalidated Host header in AdminPage self-fetch — use loopback URL or direct function call
+- [ ] [Med] AdminPage does not check `res.ok` before `.json()` — add guard + error boundary
+- [ ] [Med] Missing `SUPABASE_SERVICE_ROLE_KEY` returns 403 (masking misconfiguration) — validate env var at startup
+- [ ] [Low] Layout profile-fetch error not logged — add error check + log
+- [ ] [Low] briefingDeliveryRate has no upper-clamp — add `Math.min(..., 100)`
+- [ ] [Low] Internal HTTP self-fetch (spec prescribes direct function call) — extract shared `getAdminMetrics()` function

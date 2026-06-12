@@ -33,3 +33,10 @@
 - Dialog component missing `aria-labelledby` pointing at DialogTitle — `div[role="dialog"]` has no accessible name; pre-existing pattern in the custom dialog component; fix when the component library is audited for accessibility
 - Export and delete handlers can execute concurrently — both fetch calls can be in-flight simultaneously (independent `exportStatus`/`deleteStatus` guards); low probability in practice but an Inngest export job can be enqueued for a user mid-deletion; requires dedicated "account locked during deletion" state to fix cleanly
 - Single check-in renders "Jan 2025 – Jan 2025" date range — cosmetic; consider suppressing the range display when oldest === newest
+
+## Deferred from: code review of 7-1-operator-metrics-dashboard (2026-06-12)
+
+- `pending_deletion` users inflate `totalUsers` denominator — `checkinRate` is slightly imprecise in the window between profile soft-deletion and hard-deletion; pre-existing data model constraint [app/api/admin/metrics/route.ts]
+- `briefing_date` written by Inngest assumes UTC server TZ — both the date filter and the date string derive from UTC midnight so they're consistent if the server TZ is UTC; operational constraint, not a code defect [app/api/admin/metrics/route.ts]
+- `NODE_ENV === "production"` protocol heuristic is fragile for staging/preview deployments — low risk for an internal loopback URL; consider using `NEXT_PUBLIC_APP_URL` or `x-forwarded-proto` header in a future hardening pass [app/admin/page.tsx]
+- StreakBadge `setTimeout(0)` code smell — required workaround for `react-hooks/set-state-in-effect` ESLint rule; revisit if the lint rule is relaxed [components/goals/StreakBadge.tsx]

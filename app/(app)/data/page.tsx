@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import DataActions from "./DataActions";
+import { CoachVoiceLine } from "@/components/ui/coach-voice-line";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
@@ -59,6 +60,16 @@ export default async function DataPage() {
         This page shows the data LifePilot holds about you and lets you export or delete it.
       </p>
 
+      {profile?.pending_deletion && (
+        <div className="mb-8">
+          <CoachVoiceLine variant="observation">
+            Your account deletion is pending. Your profile information is still intact, but
+            your activity data (check-ins, briefings, goals) was deleted. To complete the
+            deletion, use the button below or contact support.
+          </CoachVoiceLine>
+        </div>
+      )}
+
       <section aria-label="Your data summary" className="mb-10 space-y-6">
         <h2 className="text-lg font-semibold">What we store about you</h2>
 
@@ -72,7 +83,7 @@ export default async function DataPage() {
                   <dd>{profile.name}</dd>
                 </div>
               )}
-              {profile.age && (
+              {profile.age != null && (
                 <div className="flex gap-2">
                   <dt className="text-muted-foreground">Age:</dt>
                   <dd>{profile.age}</dd>
@@ -84,13 +95,13 @@ export default async function DataPage() {
                   <dd>{profile.gender}</dd>
                 </div>
               )}
-              {profile.height && (
+              {profile.height != null && (
                 <div className="flex gap-2">
                   <dt className="text-muted-foreground">Height:</dt>
                   <dd>{profile.height}</dd>
                 </div>
               )}
-              {profile.weight && (
+              {profile.weight != null && (
                 <div className="flex gap-2">
                   <dt className="text-muted-foreground">Weight:</dt>
                   <dd>{profile.weight}</dd>
@@ -115,12 +126,6 @@ export default async function DataPage() {
                   <dd>{profile.briefing_time}</dd>
                 </div>
               )}
-              {profile.created_at && (
-                <div className="flex gap-2">
-                  <dt className="text-muted-foreground">Member since:</dt>
-                  <dd>{formatDate(profile.created_at)}</dd>
-                </div>
-              )}
             </dl>
           </div>
         )}
@@ -143,6 +148,12 @@ export default async function DataPage() {
               <dt className="text-muted-foreground">Briefings:</dt>
               <dd>{briefingCount ?? 0}</dd>
             </div>
+            {profile?.created_at && (
+              <div className="flex gap-2">
+                <dt className="text-muted-foreground">Member since:</dt>
+                <dd>{formatDate(profile.created_at)}</dd>
+              </div>
+            )}
           </dl>
         </div>
 

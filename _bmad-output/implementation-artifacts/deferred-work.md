@@ -27,3 +27,9 @@
 - `setMonth(-6)`/`setFullYear(-1)` cutoff math overflows at month-end and leap-day run-dates (e.g. job on Aug 31 → briefings cutoff lands Mar 3, deleting ~2 extra days) — errs toward earlier deletion (privacy-safe), only on specific run-dates; revisit if exact month-boundary retention is ever required
 - Retention index migration uses plain `create index` not `create index concurrently` — locks `checkins` writes during build on first apply; harmless pre-launch (no production rows), but switch to a concurrent/out-of-transaction migration before there is meaningful `checkins` volume
 - Inngest cron `0 2 * * *` timezone — confirmed UTC by Inngest default; noted for documentation only
+
+## Deferred from: code review of 6-2-data-summary-and-account-deletion (2026-06-12)
+
+- Dialog component missing `aria-labelledby` pointing at DialogTitle — `div[role="dialog"]` has no accessible name; pre-existing pattern in the custom dialog component; fix when the component library is audited for accessibility
+- Export and delete handlers can execute concurrently — both fetch calls can be in-flight simultaneously (independent `exportStatus`/`deleteStatus` guards); low probability in practice but an Inngest export job can be enqueued for a user mid-deletion; requires dedicated "account locked during deletion" state to fix cleanly
+- Single check-in renders "Jan 2025 – Jan 2025" date range — cosmetic; consider suppressing the range display when oldest === newest

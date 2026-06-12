@@ -1,6 +1,6 @@
 # Story 6.2: Data Summary & Account Deletion
 
-Status: review
+Status: done
 
 ## Story
 
@@ -78,6 +78,18 @@ So that I can exercise my GDPR/CCPA rights to transparency and erasure.
   - [x] `app/(auth)/__tests__/sign-in-account-deleted.test.tsx` — 2 tests: CoachVoiceLine shown for account_deleted message, form still renders
   - [x] Fixed `lib/inngest/__tests__/exportUserData.test.ts` — updated mocks to chain `.limit()` after Story 6.1 P3 patch
   - [x] Fixed `app/api/export/__tests__/export.test.ts` — added rate-limit mock + objectContaining for idempotency key after Story 6.1 patches
+
+### Review Findings
+
+- [x] [Review][Decision] `deleteUser` failure after all 4 table deletes — resolved: option (c) `pending_deletion` soft flag; migration 011 adds column; DELETE handler sets flag before step-2 deletes; `/data` page shows pending-deletion banner with retry prompt [app/api/profile/route.ts]
+- [x] [Review][Patch] Step-2 hard-deletes have no error checking — each delete now checked; any failure calls signOut and returns 500; stops before deleteUser [app/api/profile/route.ts]
+- [x] [Review][Patch] AC1 layout deviation — `Member since` moved from Profile `<dl>` to Activity `<dl>` [app/(app)/data/page.tsx]
+- [x] [Review][Patch] Falsy-zero check hides `height=0` and `weight=0` — changed to `!= null` for `age`, `height`, `weight` [app/(app)/data/page.tsx]
+- [x] [Review][Patch] `signOut` not called on `deleteUser` failure path — signOut now called on all error paths after pending_deletion flag is set [app/api/profile/route.ts]
+- [x] [Review][Patch] `userId` in `console.error` on failure — removed from error log; only `step` and `code` logged [app/api/profile/route.ts]
+- [x] [Review][Defer] Dialog missing `aria-labelledby` pointing at DialogTitle — pre-existing component library pattern, tracked separately [app/(app)/data/DataActions.tsx:106]
+- [x] [Review][Defer] Export and delete handlers can execute concurrently (independent guards) — low probability race, requires significant state coordination to fix [app/(app)/data/DataActions.tsx:24-53]
+- [x] [Review][Defer] Single check-in renders "Jan 2025 – Jan 2025" date range — cosmetic, harmless [app/(app)/data/page.tsx:50-53]
 
 ## Dev Notes
 
@@ -498,17 +510,19 @@ This is the same pattern used in `lib/inngest/functions/exportUserData.ts`.
 
 ### File List
 
-- app/(app)/data/page.tsx (modified — refactored to async RSC)
+- app/(app)/data/page.tsx (modified — refactored to async RSC; review: falsy-zero fixes, Member since moved to Activity, pending_deletion banner)
 - app/(app)/data/DataActions.tsx (created — "use client" component)
 - app/(app)/data/__tests__/DataActions.test.tsx (created — 9 tests)
-- app/api/profile/route.ts (modified — added DELETE handler)
-- app/api/profile/__tests__/profile-delete.test.ts (created — 11 tests)
+- app/api/profile/route.ts (modified — added DELETE handler; review: pending_deletion flag, per-table error checking, signOut on all error paths, PII-free error logs)
+- app/api/profile/__tests__/profile-delete.test.ts (created — 14 tests; review: update mock + 3 new tests)
 - app/(auth)/sign-in/page.tsx (modified — account_deleted message)
 - app/(auth)/__tests__/sign-in-account-deleted.test.tsx (created — 2 tests)
 - lib/inngest/__tests__/exportUserData.test.ts (modified — fixed .limit() chain mock)
 - app/api/export/__tests__/export.test.ts (modified — added rate-limit mock + objectContaining)
+- supabase/migrations/011_profiles_pending_deletion.sql (created — pending_deletion column)
 
 ### Change Log
 
 - 2026-06-12: Story created — Sprint 6, Epic 6 Story 2; GDPR data summary + account deletion
 - 2026-06-12: Implementation complete — all ACs satisfied, 397 tests passing (22 new)
+- 2026-06-12: Code review patches applied — D1 pending_deletion flag (migration 011), step-2 error checking, signOut on all failure paths, PII-free error logs, falsy-zero fixes, Member since layout fix; 14 tests (3 new); status → done

@@ -138,18 +138,38 @@ export async function DELETE() {
     );
   }
 
-  // 2. Hard-delete user data (sequential — order matters for GDPR compliance)
-  await adminClient.from("checkins").delete().eq("user_id", userId);
-  await adminClient.from("briefings").delete().eq("user_id", userId);
-  await adminClient.from("goals").delete().eq("user_id", userId);
-  await adminClient.from("audit_logs").delete().eq("user_id", userId);
+  // 1b. Mark account as pending deletion so the broken state is detectable on re-login
+  //     if step 3 (deleteUser) fails after all table deletes have completed.
+  await adminClient
+    .from("profiles")
+    .update({ pending_deletion: true })
+    .eq("id", userId);
 
-  // 3. Delete auth user — cascades to profiles row
+  // 2. Hard-delete user data (sequential — order matters for GDPR compliance).
+  //    Any delete error stops execution immediately and returns 500.
+  const deleteStep = async (table: string) =>
+    (adminClient.from(table).delete().eq("user_id", userId)) as unknown as Promise<{ error: { message: string } | null }>;
+
+  for (const table of ["checkins", "briefings", "goals", "audit_logs"]) {
+    const { error } = await deleteStep(table);
+    if (error) {
+      console.error(JSON.stringify({ event: "account_deletion_failed", step: `delete_${table}`, code: error.message }));
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: { code: "DB_ERROR", message: "Failed to delete account data. Please try again." } },
+        { status: 500 }
+      );
+    }
+  }
+
+  // 3. Delete auth user — cascades to profiles row (which has pending_deletion=true)
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
   if (deleteError) {
-    console.error(JSON.stringify({ event: "account_deletion_failed", userId, code: deleteError.message }));
+    // Profile still exists with pending_deletion=true — detectable on next sign-in
+    console.error(JSON.stringify({ event: "account_deletion_failed", step: "delete_auth_user", code: deleteError.message }));
+    await supabase.auth.signOut();
     return NextResponse.json(
-      { error: { code: "DB_ERROR", message: "Failed to delete account." } },
+      { error: { code: "DB_ERROR", message: "Failed to complete account deletion. Please visit your data page to retry." } },
       { status: 500 }
     );
   }

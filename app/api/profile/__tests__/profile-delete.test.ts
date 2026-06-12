@@ -13,9 +13,13 @@ const mockAdminDeleteUser = vi.fn().mockResolvedValue({ error: null });
 const mockEq = vi.fn().mockResolvedValue({ error: null });
 const mockDelete = vi.fn().mockReturnValue({ eq: mockEq });
 const mockInsert = vi.fn().mockResolvedValue({ error: null });
+// update chain: .update({}).eq() — used for setting pending_deletion flag
+const mockUpdateEq = vi.fn().mockResolvedValue({ error: null });
+const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq });
 const mockFrom = vi.fn().mockReturnValue({
   insert: mockInsert,
   delete: mockDelete,
+  update: mockUpdate,
 });
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -42,7 +46,9 @@ describe("DELETE /api/profile", () => {
     mockInsert.mockResolvedValue({ error: null });
     mockEq.mockResolvedValue({ error: null });
     mockDelete.mockReturnValue({ eq: mockEq });
-    mockFrom.mockReturnValue({ insert: mockInsert, delete: mockDelete });
+    mockUpdateEq.mockResolvedValue({ error: null });
+    mockUpdate.mockReturnValue({ eq: mockUpdateEq });
+    mockFrom.mockReturnValue({ insert: mockInsert, delete: mockDelete, update: mockUpdate });
     mockSignOut.mockResolvedValue({ error: null });
   });
 
@@ -136,5 +142,46 @@ describe("DELETE /api/profile", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.deleted).toBe(true);
+  });
+
+  it("sets pending_deletion flag on profiles before step-2 table deletes", async () => {
+    const DELETE = await getHandler();
+    await DELETE();
+    expect(mockFrom).toHaveBeenCalledWith("profiles");
+    expect(mockUpdate).toHaveBeenCalledWith({ pending_deletion: true });
+    expect(mockUpdateEq).toHaveBeenCalledWith("id", "user-123");
+  });
+
+  it("returns 500 and calls signOut when a step-2 table delete fails", async () => {
+    // Simulate checkins delete failing
+    mockEq.mockResolvedValueOnce({ error: null }) // audit_logs insert eq (not a delete)
+      // pending_deletion update eq
+      .mockResolvedValueOnce({ error: null });
+    // Override: the first delete().eq() call should fail
+    const failEq = vi.fn().mockResolvedValue({ error: { message: "constraint violation" } });
+    mockDelete.mockReturnValueOnce({ eq: failEq });
+
+    const DELETE = await getHandler();
+    const res = await DELETE();
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error.code).toBe("DB_ERROR");
+    expect(mockSignOut).toHaveBeenCalled();
+    expect(mockAdminDeleteUser).not.toHaveBeenCalled();
+  });
+
+  it("calls signOut and returns 500 when deleteUser fails (after all table deletes succeed)", async () => {
+    mockAdminDeleteUser.mockResolvedValue({ error: { message: "user not found" } });
+    const DELETE = await getHandler();
+    const res = await DELETE();
+    expect(res.status).toBe(500);
+    expect(mockSignOut).toHaveBeenCalled();
+    expect(mockConsoleError).toHaveBeenCalledWith(
+      expect.stringContaining("account_deletion_failed")
+    );
+    // userId should NOT appear in error log (PII removed)
+    const errorLogArg = mockConsoleError.mock.calls[0][0];
+    const parsed = JSON.parse(errorLogArg);
+    expect(parsed).not.toHaveProperty("userId");
   });
 });

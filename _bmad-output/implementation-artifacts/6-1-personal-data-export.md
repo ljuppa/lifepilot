@@ -1,6 +1,6 @@
 # Story 6.1: Personal Data Export
 
-Status: review
+Status: done
 
 ## Story
 
@@ -470,16 +470,16 @@ supabase/migrations/001_audit_logs.sql through 007_*
 
 ### Action Items
 
-- [ ] [Review][Decision] Email failure handling — should `NO_EMAIL`, `SIGNED_URL_FAILED`, and `sendError` throw to trigger Inngest retry, or silently succeed? Spec says email is "critical" but the data is still exported to storage even if email fails. Decide: (A) throw on email failure to retry, or (B) keep silent and add a re-request path.
-- [ ] [Review][Patch] No rate limiting on POST /api/export — any authenticated user can spam unlimited Inngest jobs [app/api/export/route.ts]
-- [ ] [Review][Patch] `timestamp`/`path` computed outside Inngest steps — on retry a new timestamp is generated, creating orphaned storage files and causing `createSignedUrl` to sign a non-existent path [lib/inngest/functions/exportUserData.ts:18-19]
-- [ ] [Review][Patch] No `.limit()` on list queries — Supabase 1000-row default silently truncates exports; GDPR violation for power users [lib/inngest/functions/exportUserData.ts:32-38]
-- [ ] [Review][Patch] `fetch-user-data` query errors unchecked — if any query fails, `null`/`[]` is silently written to the export without throwing [lib/inngest/functions/exportUserData.ts:28-45]
-- [ ] [Review][Patch] RLS `foldername[1]` returns `'exports'` not `userId` — authenticated users can never read their own export files via the storage API [supabase/migrations/008_storage_exports_bucket.sql:8]
-- [ ] [Review][Patch] `userName` interpolated unescaped into HTML email — XSS risk if `user_metadata.name` contains HTML [lib/email/templates/dataExport.ts:19]
-- [ ] [Review][Patch] Non-idempotent email send — no `idempotencyKey` on `inngest.send` or Resend call; up to 4 emails sent on 3 retries [lib/inngest/functions/exportUserData.ts, app/api/export/route.ts]
-- [ ] [Review][Patch] `data_export_generated` logged only when email send succeeds — should fire when export is generated (upload complete), regardless of email outcome [lib/inngest/functions/exportUserData.ts:113]
-- [ ] [Review][Patch] `handleExport` has no programmatic double-submit guard — `disabled` is presentation-layer only [app/(app)/data/page.tsx:14]
+- [x] [Review][Decision] Email failure handling — Decision B chosen: keep silent failure; upload is success signal. Email error logged but does not throw.
+- [x] [Review][Patch] No rate limiting on POST /api/export — any authenticated user can spam unlimited Inngest jobs [app/api/export/route.ts]
+- [x] [Review][Patch] `timestamp`/`path` computed outside Inngest steps — on retry a new timestamp is generated, creating orphaned storage files and causing `createSignedUrl` to sign a non-existent path [lib/inngest/functions/exportUserData.ts:18-19]
+- [x] [Review][Patch] No `.limit()` on list queries — Supabase 1000-row default silently truncates exports; GDPR violation for power users [lib/inngest/functions/exportUserData.ts:32-38]
+- [x] [Review][Patch] `fetch-user-data` query errors unchecked — if any query fails, `null`/`[]` is silently written to the export without throwing [lib/inngest/functions/exportUserData.ts:28-45]
+- [x] [Review][Patch] RLS `foldername[1]` returns `'exports'` not `userId` — authenticated users can never read their own export files via the storage API [supabase/migrations/008_storage_exports_bucket.sql:8]
+- [x] [Review][Patch] `userName` interpolated unescaped into HTML email — XSS risk if `user_metadata.name` contains HTML [lib/email/templates/dataExport.ts:19]
+- [x] [Review][Patch] Non-idempotent email send — no `idempotencyKey` on `inngest.send` or Resend call; up to 4 emails sent on 3 retries [lib/inngest/functions/exportUserData.ts, app/api/export/route.ts]
+- [x] [Review][Patch] `data_export_generated` logged only when email send succeeds — should fire when export is generated (upload complete), regardless of email outcome [lib/inngest/functions/exportUserData.ts:113]
+- [x] [Review][Patch] `handleExport` has no programmatic double-submit guard — `disabled` is presentation-layer only [app/(app)/data/page.tsx:14]
 - [x] [Review][Defer] No DELETE policy on exports bucket — old files accumulate indefinitely — deferred, pre-existing storage lifecycle gap
 - [x] [Review][Defer] `upsert:true` overwrite race — mostly mitigated once timestamp-outside-steps is fixed — deferred, low risk after P2
 - [x] [Review][Defer] Missing `ALTER TABLE ENABLE RLS` — Supabase Storage enables RLS on `storage.objects` automatically — deferred, not needed
@@ -526,3 +526,4 @@ claude-sonnet-4-6
 
 - 2026-05-15: Story created — Sprint 6, Epic 6 Story 1; GDPR data export via Inngest + Supabase Storage + Resend
 - 2026-05-15: Implementation complete — all ACs satisfied, 375 tests passing
+- 2026-06-12: Code review patches applied — 9 issues resolved: rate limiting (P1), timestamp inside step (P2), row limits (P3), query error checks (P4), RLS foldername[2] fix + migration 009 (P5), HTML-escape userName (P6), inngest idempotency key (P7), log placement after upload (P8), double-submit guard (P9)

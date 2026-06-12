@@ -11,6 +11,7 @@ export default function DataPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleExport() {
+    if (status === "loading") return;
     setStatus("loading");
     setErrorMessage("");
     const res = await fetch("/api/export", { method: "POST" });

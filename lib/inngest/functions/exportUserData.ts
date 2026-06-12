@@ -15,22 +15,31 @@ export const exportUserData = inngest.createFunction(
   },
   async ({ event, step }) => {
     const userId = event.data.userId as string;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const path = `exports/${userId}/${timestamp}.json`;
 
-    const { jsonString } = await step.run("fetch-user-data", async () => {
+    // P2: timestamp and path computed inside the step so retries produce the same value
+    const { jsonString, path } = await step.run("fetch-user-data", async () => {
       const adminClient = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filePath = `exports/${userId}/${timestamp}.json`;
+
       const [profileRes, goalsRes, checkinsRes, briefingsRes, auditRes] = await Promise.all([
         adminClient.from("profiles").select("*").eq("id", userId).single(),
-        adminClient.from("goals").select("*").eq("user_id", userId),
-        adminClient.from("checkins").select("*").eq("user_id", userId).order("checked_in_at", { ascending: false }),
-        adminClient.from("briefings").select("*").eq("user_id", userId).order("briefing_date", { ascending: false }),
-        adminClient.from("audit_logs").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+        adminClient.from("goals").select("*").eq("user_id", userId).limit(50000),
+        adminClient.from("checkins").select("*").eq("user_id", userId).order("checked_in_at", { ascending: false }).limit(50000),
+        adminClient.from("briefings").select("*").eq("user_id", userId).order("briefing_date", { ascending: false }).limit(50000),
+        adminClient.from("audit_logs").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50000),
       ]);
+
+      // P4: surface fetch errors so Inngest retries rather than silently exporting incomplete data
+      if (profileRes.error) throw new Error(`Profile fetch failed: ${profileRes.error.message}`);
+      if (goalsRes.error) throw new Error(`Goals fetch failed: ${goalsRes.error.message}`);
+      if (checkinsRes.error) throw new Error(`Checkins fetch failed: ${checkinsRes.error.message}`);
+      if (briefingsRes.error) throw new Error(`Briefings fetch failed: ${briefingsRes.error.message}`);
+      if (auditRes.error) throw new Error(`Audit log fetch failed: ${auditRes.error.message}`);
 
       const exportPayload = {
         exportedAt: new Date().toISOString(),
@@ -40,7 +49,7 @@ export const exportUserData = inngest.createFunction(
         briefings: briefingsRes.data ?? [],
         auditLog: auditRes.data ?? [],
       };
-      return { jsonString: JSON.stringify(exportPayload, null, 2) };
+      return { jsonString: JSON.stringify(exportPayload, null, 2), path: filePath };
     });
 
     await step.run("upload-export", async () => {
@@ -53,6 +62,15 @@ export const exportUserData = inngest.createFunction(
         .upload(path, Buffer.from(jsonString), { contentType: "application/json", upsert: true });
       if (error) throw new Error(`Storage upload failed: ${error.message}`);
     });
+
+    // P8: log after upload confirms the file exists, not inside the email step
+    console.log(
+      JSON.stringify({
+        event: "data_export_generated",
+        userId,
+        fileSizeBytes: Buffer.byteLength(jsonString),
+      })
+    );
 
     await step.run("send-email", async () => {
       const adminClient = createSupabaseClient(
@@ -104,14 +122,6 @@ export const exportUserData = inngest.createFunction(
             event: "data_export_email_failed",
             userId,
             code: (sendError as { name?: string }).name ?? "UNKNOWN",
-          })
-        );
-      } else {
-        console.log(
-          JSON.stringify({
-            event: "data_export_generated",
-            userId,
-            fileSizeBytes: Buffer.byteLength(jsonString),
           })
         );
       }

@@ -1,6 +1,6 @@
 # Story 7.1: Operator Metrics Dashboard
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -30,37 +30,37 @@ Response shape: `{ data: { dau, briefingDeliveryRate, checkinRate, totalUsers } 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Migration 012 — add `role` column to profiles**
-  - [ ] Create `supabase/migrations/012_add_admin_role.sql`
-  - [ ] `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin'))`
-  - [ ] Verify migration is idempotent (`IF NOT EXISTS` / `IF NOT EXISTS` guards)
+- [x] **Task 1: Migration 012 — add `role` column to profiles**
+  - [x] Create `supabase/migrations/012_add_admin_role.sql`
+  - [x] `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin'))`
+  - [x] Verify migration is idempotent (`IF NOT EXISTS` / `IF NOT EXISTS` guards)
 
-- [ ] **Task 2: Protect `/admin` in middleware**
-  - [ ] Add `"/admin"` to `PROTECTED_ROUTES` in `proxy.ts`
-  - [ ] Confirm `isProtected()` handles `/admin/users` etc. via `startsWith` (already correct)
+- [x] **Task 2: Protect `/admin` in middleware**
+  - [x] Add `"/admin"` to `PROTECTED_ROUTES` in `proxy.ts`
+  - [x] Confirm `isProtected()` handles `/admin/users` etc. via `startsWith` (already correct)
 
-- [ ] **Task 3: Admin layout with role guard**
-  - [ ] Create `app/admin/layout.tsx`
-  - [ ] `createClient()` + `supabase.auth.getUser()` — redirect to `/sign-in` if no user
-  - [ ] Query `profiles.role` for `user.id` — redirect to `/dashboard` if role ≠ `'admin'`
-  - [ ] Render minimal admin chrome (heading + `{children}`)
+- [x] **Task 3: Admin layout with role guard**
+  - [x] Create `app/admin/layout.tsx`
+  - [x] `createClient()` + `supabase.auth.getUser()` — redirect to `/sign-in` if no user
+  - [x] Query `profiles.role` for `user.id` — redirect to `/dashboard` if role ≠ `'admin'`
+  - [x] Render minimal admin chrome (heading + `{children}`)
 
-- [ ] **Task 4: `GET /api/admin/metrics` route + tests**
-  - [ ] Write failing tests first: `app/api/admin/__tests__/metrics.test.ts`
-    - [ ] 401 when unauthenticated
-    - [ ] 403 when role ≠ admin
-    - [ ] 200 with correct `{ data: { dau, briefingDeliveryRate, checkinRate, totalUsers } }` shape
-    - [ ] DAU counts distinct user_ids (not total rows)
-    - [ ] briefingDeliveryRate is 0 when no briefings today
-    - [ ] checkinRate is 0 when totalUsers is 0
-    - [ ] structured log emitted on success
-  - [ ] Implement `app/api/admin/metrics/route.ts`
-  - [ ] Run tests — all pass
+- [x] **Task 4: `GET /api/admin/metrics` route + tests**
+  - [x] Write failing tests first: `app/api/admin/__tests__/metrics.test.ts`
+    - [x] 401 when unauthenticated
+    - [x] 403 when role ≠ admin
+    - [x] 200 with correct `{ data: { dau, briefingDeliveryRate, checkinRate, totalUsers } }` shape
+    - [x] DAU counts distinct user_ids (not total rows)
+    - [x] briefingDeliveryRate is 0 when no briefings today
+    - [x] checkinRate is 0 when totalUsers is 0
+    - [x] structured log emitted on success
+  - [x] Implement `app/api/admin/metrics/route.ts`
+  - [x] Run tests — all pass
 
-- [ ] **Task 5: Admin dashboard page + skeleton**
-  - [ ] Create `app/admin/loading.tsx` — 4 skeleton stat card placeholders
-  - [ ] Create `app/admin/page.tsx` — async RSC, fetches `GET /api/admin/metrics` server-side via absolute URL, renders 4 `StatCard` components
-  - [ ] Define inline `StatCard` component (number + label)
+- [x] **Task 5: Admin dashboard page + skeleton**
+  - [x] Create `app/admin/loading.tsx` — 4 skeleton stat card placeholders
+  - [x] Create `app/admin/page.tsx` — async RSC, fetches `GET /api/admin/metrics` server-side via absolute URL, renders 4 `StatCard` components
+  - [x] Define inline `StatCard` component (number + label)
 
 ## Dev Notes
 
@@ -417,12 +417,26 @@ utils/supabase/server.ts   — no changes needed
 
 ### Completion Notes List
 
-(to be filled)
+- All 5 tasks complete; 419 tests passing (10 new), 0 regressions.
+- `supabase/migrations/012_add_admin_role.sql`: adds `role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin'))` to profiles via idempotent `ADD COLUMN IF NOT EXISTS`.
+- `proxy.ts`: `/admin` added to PROTECTED_ROUTES — middleware enforces base session check; `isProtected()` `startsWith` guard already covers `/admin/users`, `/admin/broadcast` etc.
+- `app/admin/layout.tsx`: async RSC guard — `getUser()` → redirect `/sign-in` if no session; `profiles.select("role").eq(id).single()` → redirect `/dashboard` if role ≠ `'admin'`.
+- `app/api/admin/metrics/route.ts`: verifies admin role first via service-role client; DAU via JS `Set` distinct on checkins user_ids; briefing delivery rate and check-in rate as integer percentages; 0-safe division; structured log with no PII.
+- `app/admin/page.tsx`: async RSC forwarding session cookie to internal metrics API; renders 4 inline `StatCard` components; falls back to zeros on fetch error.
+- `app/admin/loading.tsx`: 4 skeleton stat cards with `animate-pulse` shown during page navigation (Next.js App Router Suspense boundary).
+- 10 new tests cover: 401 unauthed, 403 non-admin, 200 shape, distinct DAU, delivery rate %, edge cases (0 briefings, 0 users), totalUsers count, PII-free log.
 
 ### File List
 
-(to be filled)
+- supabase/migrations/012_add_admin_role.sql (created)
+- proxy.ts (modified — added /admin to PROTECTED_ROUTES)
+- app/admin/layout.tsx (created — admin role guard)
+- app/admin/page.tsx (created — metrics dashboard RSC)
+- app/admin/loading.tsx (created — skeleton stat cards)
+- app/api/admin/metrics/route.ts (created — GET metrics handler)
+- app/api/admin/__tests__/metrics.test.ts (created — 10 tests)
 
 ### Change Log
 
 - 2026-06-12: Story created — Sprint 7, Epic 7 Story 1; operator metrics dashboard
+- 2026-06-12: Implementation complete — all ACs satisfied, 419 tests passing (10 new)

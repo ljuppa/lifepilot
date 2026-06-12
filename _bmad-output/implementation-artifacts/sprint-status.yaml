@@ -104,7 +104,7 @@ development_status:
 
   # ── Epic 7: Administration & Operations ──────────────────────────────────
   epic-7: in-progress
-  7-1-operator-metrics-dashboard: ready-for-dev
+  7-1-operator-metrics-dashboard: review
   7-2-per-user-email-delivery-lookup: backlog
   7-3-system-wide-broadcast: backlog
   epic-7-retrospective: optional

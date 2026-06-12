@@ -32,6 +32,9 @@ export const retentionCleanup = inngest.createFunction(
           .select("id"),
       ]);
 
+      if (checkinsRes.error) throw new Error(`Checkins retention delete failed: ${checkinsRes.error.message}`);
+      if (briefingsRes.error) throw new Error(`Briefings retention delete failed: ${briefingsRes.error.message}`);
+
       return {
         checkinsDeleted: checkinsRes.data?.length ?? 0,
         briefingsDeleted: briefingsRes.data?.length ?? 0,

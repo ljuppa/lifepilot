@@ -21,3 +21,9 @@
 - `upsert:true` overwrite race on concurrent exports — low risk once timestamp-outside-steps is fixed (P2); revisit if concurrent export protection becomes a requirement
 - Missing `ALTER TABLE ENABLE RLS` in migration — Supabase Storage enables RLS on `storage.objects` automatically; not needed, noted for documentation clarity
 - `userId` from Inngest event payload not validated as UUID — always sourced from verified Supabase session in this flow; add Zod validation if event bus ever becomes externally accessible
+
+## Deferred from: code review of 6-3-automated-data-retention (2026-06-12)
+
+- `setMonth(-6)`/`setFullYear(-1)` cutoff math overflows at month-end and leap-day run-dates (e.g. job on Aug 31 → briefings cutoff lands Mar 3, deleting ~2 extra days) — errs toward earlier deletion (privacy-safe), only on specific run-dates; revisit if exact month-boundary retention is ever required
+- Retention index migration uses plain `create index` not `create index concurrently` — locks `checkins` writes during build on first apply; harmless pre-launch (no production rows), but switch to a concurrent/out-of-transaction migration before there is meaningful `checkins` volume
+- Inngest cron `0 2 * * *` timezone — confirmed UTC by Inngest default; noted for documentation only

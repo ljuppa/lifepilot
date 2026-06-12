@@ -115,6 +115,22 @@ describe("retentionCleanup Inngest function", () => {
     );
   });
 
+  it("throws (triggering Inngest retry) when checkins delete returns an error", async () => {
+    mockCheckinsQuery.select.mockResolvedValue({
+      data: null,
+      error: { message: "permission denied" },
+    });
+    await expect(runRetentionCleanup()).rejects.toThrow("Checkins retention delete failed");
+  });
+
+  it("throws (triggering Inngest retry) when briefings delete returns an error", async () => {
+    mockBriefingsQuery.select.mockResolvedValue({
+      data: null,
+      error: { message: "connection timeout" },
+    });
+    await expect(runRetentionCleanup()).rejects.toThrow("Briefings retention delete failed");
+  });
+
   it("emits a structured retention_cleanup_complete log with no PII fields", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     await runRetentionCleanup();

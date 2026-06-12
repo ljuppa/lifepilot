@@ -1,6 +1,6 @@
 # Story 6.3: Automated Data Retention
 
-Status: review
+Status: done
 
 ## Story
 
@@ -38,6 +38,13 @@ So that the platform complies with GDPR Art. 5(1)(e) without manual intervention
   - [x] Test: no user IDs or personal data appear in log output
   - [x] Test: service-role client used (not SSR session client) — verify `SUPABASE_SERVICE_ROLE_KEY` env var consumed
   - [x] Run full test suite to confirm no regressions
+
+### Review Findings
+
+- [x] [Review][Patch] retentionCleanup swallows delete `error` — silent failure of the compliance job [lib/inngest/functions/retentionCleanup.ts:35-37] — If `checkinsRes.error`/`briefingsRes.error` is set, `data` is null, count coalesces to 0, the function returns success and logs `retention_cleanup_complete` with count 0, so Inngest never retries. A failed retention deletion is indistinguishable from a clean run (undermines AC4 "no inconsistent state" and AC3 accurate counts). Fix: check each `.error` and throw (matches the exportUserData P4 convention) so Inngest retries. Add an error-path test.
+- [x] [Review][Defer] `setMonth(-6)`/`setFullYear(-1)` day-overflow at month-end & leap boundaries [lib/inngest/functions/retentionCleanup.ts:16-20] — deferred, pre-existing. Errs toward deleting a few days early (privacy-safe direction), only on specific run-dates; month-granularity intent makes this immaterial.
+- [x] [Review][Defer] Migration uses `create index` (not `concurrently`) — locks `checkins` writes on first apply [supabase/migrations/010_retention_indexes.sql:6] — deferred, pre-launch MVP with no production data; `concurrently` cannot run inside the transactional migration runner. Revisit as production-hardening before launch.
+- [x] [Review][Defer] Inngest cron timezone confirmation for `0 2 * * *` [lib/inngest/functions/retentionCleanup.ts:5] — deferred, informational; Inngest crons are UTC, matching the 02:00 UTC AC.
 
 ## Dev Notes
 
@@ -202,9 +209,11 @@ The Inngest client must be mocked to allow function invocation in tests. Follow 
 ## File List
 
 - `supabase/migrations/010_retention_indexes.sql` (new)
-- `lib/inngest/__tests__/retentionCleanup.test.ts` (new)
-- `_bmad-output/implementation-artifacts/6-3-automated-data-retention.md` (updated — status, tasks, dev record)
+- `lib/inngest/__tests__/retentionCleanup.test.ts` (new — 9 tests including 2 error-path tests added by review patch)
+- `lib/inngest/functions/retentionCleanup.ts` (modified — error checks added by review patch)
+- `_bmad-output/implementation-artifacts/6-3-automated-data-retention.md` (updated — status, tasks, dev record, review findings)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated — 6-3 status)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (appended — 3 deferred findings)
 
 ## Change Log
 
@@ -212,3 +221,4 @@ The Inngest client must be mocked to allow function invocation in tests. Follow 
 |------------|----------------------------------------------------------------|
 | 2026-06-12 | Story created (ready-for-dev)                                  |
 | 2026-06-12 | Implemented Task 1 (retention index migration) + Task 2 (7 tests); status → review |
+| 2026-06-12 | Code review: applied 1 patch (error checks in retentionCleanup + 2 tests); 3 deferred; status → done |

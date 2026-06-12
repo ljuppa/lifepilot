@@ -6,11 +6,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
+
+  if (profileError) {
+    console.error(JSON.stringify({ event: "admin_layout_profile_error", code: profileError.code }));
+    redirect("/dashboard");
+  }
 
   if (profile?.role !== "admin") redirect("/dashboard");
 

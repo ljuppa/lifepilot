@@ -1,11 +1,5 @@
-import { headers } from "next/headers";
-
-type Metrics = {
-  dau: number;
-  briefingDeliveryRate: number;
-  checkinRate: number;
-  totalUsers: number;
-};
+import { getAdminMetrics } from "@/lib/admin/getMetrics";
+import type { AdminMetrics } from "@/lib/admin/getMetrics";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
@@ -17,22 +11,12 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
 }
 
 export default async function AdminPage() {
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "localhost:3000";
-  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-
-  const res = await fetch(`${protocol}://${host}/api/admin/metrics`, {
-    headers: { cookie: headersList.get("cookie") ?? "" },
-    cache: "no-store",
-  });
-
-  const json = await res.json() as { data?: Metrics };
-  const metrics: Metrics = json.data ?? {
-    dau: 0,
-    briefingDeliveryRate: 0,
-    checkinRate: 0,
-    totalUsers: 0,
-  };
+  let metrics: AdminMetrics;
+  try {
+    metrics = await getAdminMetrics();
+  } catch {
+    metrics = { dau: 0, briefingDeliveryRate: 0, checkinRate: 0, totalUsers: 0 };
+  }
 
   return (
     <div>

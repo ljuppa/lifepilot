@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { getAdminMetrics } from "@/lib/admin/getMetrics";
 
 export async function GET() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    return NextResponse.json(
+      { error: { code: "CONFIG_ERROR", message: "Server configuration error" } },
+      { status: 500 }
+    );
+  }
+
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -14,15 +23,22 @@ export async function GET() {
 
   const adminClient = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    serviceRoleKey
   );
 
-  // Verify admin role before any DB queries
-  const { data: profile } = await adminClient
+  const { data: profile, error: profileError } = await adminClient
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
+
+  if (profileError) {
+    console.error(JSON.stringify({ event: "admin_role_check_error", code: profileError.code }));
+    return NextResponse.json(
+      { error: { code: "DB_ERROR", message: "Failed to verify authorization" } },
+      { status: 500 }
+    );
+  }
 
   if (profile?.role !== "admin") {
     return NextResponse.json(
@@ -31,45 +47,15 @@ export async function GET() {
     );
   }
 
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-  const todayDateStr = todayStart.toISOString().slice(0, 10);
-
-  // DAU: distinct user_ids who checked in today
-  const { data: todayCheckins } = await adminClient
-    .from("checkins")
-    .select("user_id")
-    .gte("checked_in_at", todayStart.toISOString());
-  const dau = new Set((todayCheckins ?? []).map((r: { user_id: string }) => r.user_id)).size;
-
-  // Total users
-  const { count: totalUsers } = await adminClient
-    .from("profiles")
-    .select("*", { count: "exact", head: true });
-
-  // Briefing delivery rate today
-  const { count: totalBriefings } = await adminClient
-    .from("briefings")
-    .select("*", { count: "exact", head: true })
-    .eq("briefing_date", todayDateStr);
-
-  const { count: deliveredBriefings } = await adminClient
-    .from("briefings")
-    .select("*", { count: "exact", head: true })
-    .eq("briefing_date", todayDateStr)
-    .eq("email_status", "delivered");
-
-  const briefingDeliveryRate =
-    (totalBriefings ?? 0) > 0
-      ? Math.round(((deliveredBriefings ?? 0) / totalBriefings!) * 100)
-      : 0;
-
-  const checkinRate =
-    (totalUsers ?? 0) > 0 ? Math.round((dau / totalUsers!) * 100) : 0;
-
-  console.log(
-    JSON.stringify({ event: "admin_metrics_fetched", dau, briefingDeliveryRate, checkinRate, totalUsers })
-  );
-
-  return NextResponse.json({ data: { dau, briefingDeliveryRate, checkinRate, totalUsers } });
+  try {
+    const metrics = await getAdminMetrics();
+    console.log(JSON.stringify({ event: "admin_metrics_fetched", ...metrics }));
+    return NextResponse.json({ data: metrics });
+  } catch (err) {
+    console.error(JSON.stringify({ event: "admin_metrics_error", message: (err as Error).message }));
+    return NextResponse.json(
+      { error: { code: "DB_ERROR", message: "Failed to fetch metrics" } },
+      { status: 500 }
+    );
+  }
 }

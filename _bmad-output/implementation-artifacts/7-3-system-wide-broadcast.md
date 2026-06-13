@@ -14,7 +14,7 @@ So that I can communicate important platform updates, new features, or maintenan
 
 **AC2 — POST /api/admin/broadcast:** Given I submit the broadcast form, when `POST /api/admin/broadcast` runs, then admin role is verified first; `AdminBroadcastSchema` Zod in `lib/validation/admin.ts` validates both fields; a `notification/broadcast.requested` Inngest event is emitted with `{ adminUserId, subject, body, triggeredAt }`; the route returns `{ data: { message: "Broadcast queued — users will receive it shortly." } }`.
 
-**AC3 — sendBroadcast Inngest function:** Given the Inngest `sendBroadcast` function runs, when it fans out emails, then it fetches all user IDs with verified accounts and complete profiles; sends the broadcast email to each via Resend; the email includes a physical mailing address and one-click unsubscribe link (CAN-SPAM); users who have opted out of non-critical emails are skipped.
+**AC3 — sendBroadcast Inngest function:** Given the Inngest `sendBroadcast` function runs, when it fans out emails, then it fetches all user IDs with verified accounts and complete profiles; sends the broadcast email to each via Resend; the email includes a physical mailing address and one-click unsubscribe link (CAN-SPAM); users who have `broadcastEmails: false` in their notification preferences are skipped.
 
 **AC4 — Success state:** Given the broadcast is queued, when the form submission response is received, then a `CoachVoiceLine` on the page reads "Broadcast queued — users will receive it shortly." and the form fields reset.
 
@@ -23,6 +23,14 @@ So that I can communicate important platform updates, new features, or maintenan
 **AC6 — Access control:** Given `POST /api/admin/broadcast` is called without admin role, when the role check runs, then it returns HTTP 403: `{ "error": { "code": "FORBIDDEN", "message": "Admin access required." } }`.
 
 ## Tasks / Subtasks
+
+- [ ] **Task 0: Migration — add broadcastEmails preference** (AC: #3)
+  - [ ] Create `supabase/migrations/015_broadcast_preference.sql`
+  - [ ] Update column default: `ALTER TABLE public.profiles ALTER COLUMN notification_preferences SET DEFAULT '{"briefingEmails": true, "reengagementEmails": true, "broadcastEmails": true}'::jsonb`
+  - [ ] Backfill existing rows: `UPDATE public.profiles SET notification_preferences = notification_preferences || '{"broadcastEmails": true}'::jsonb WHERE notification_preferences->>'broadcastEmails' IS NULL`
+  - [ ] Update `lib/validation/notificationPreferences.ts` — add `broadcastEmails: z.boolean().optional()` to the schema object
+  - [ ] Update `app/api/unsubscribe/route.ts` — add `"broadcastEmails"` to `VALID_TYPES` array
+  - [ ] Update `app/(app)/settings/page.tsx` — add `broadcastEmails: boolean` to `NotificationPreferences` interface and `DEFAULTS`, add a third `ToggleRow` (id: `"toggle-broadcast"`, label: `"Platform announcements"`, description: `"Important updates about LifePilot — features, maintenance, and security notices"`)
 
 - [ ] **Task 1: Extend AdminBroadcastSchema in lib/validation/admin.ts** (AC: #2)
   - [ ] Add `AdminBroadcastSchema` with `subject: z.string().min(1).max(120)` and `body: z.string().min(1).max(2000)`
@@ -95,7 +103,12 @@ So that I can communicate important platform updates, new features, or maintenan
 ### Architecture location map
 
 ```
+supabase/migrations/
+  015_broadcast_preference.sql  ← NEW (Task 0) — broadcastEmails default + backfill
 app/
+  (app)/
+    settings/
+      page.tsx              ← UPDATE (Task 0) — add broadcastEmails toggle
   admin/
     layout.tsx              ← EXISTS — wraps all admin pages, handles role guard
     page.tsx                ← EXISTS — metrics dashboard
@@ -112,12 +125,15 @@ app/api/
     broadcast/route.ts      ← NEW (Task 3)
   inngest/
     route.ts                ← UPDATE (Task 4) — register sendBroadcast
+  unsubscribe/
+    route.ts                ← UPDATE (Task 0) — add "broadcastEmails" to VALID_TYPES
 lib/
   admin/
     getMetrics.ts           ← EXISTS
     getUserData.ts          ← EXISTS
   validation/
     admin.ts                ← UPDATE (Task 1) — add AdminBroadcastSchema
+    notificationPreferences.ts ← UPDATE (Task 0) — add broadcastEmails field
     __tests__/admin.test.ts ← UPDATE (Task 1)
   inngest/
     client.ts               ← EXISTS — do not modify
@@ -247,7 +263,7 @@ export const sendBroadcast = inngest.createFunction(
       const { data: profiles, error } = await adminClient
         .from("profiles")
         .select("id")
-        .filter("notification_preferences->reengagementEmails", "eq", true);
+        .filter("notification_preferences->broadcastEmails", "eq", true);
       if (error) throw new Error(`Failed to fetch recipients: ${error.message}`);
       return profiles ?? [];
     });
@@ -270,8 +286,8 @@ export const sendBroadcast = inngest.createFunction(
             return;
           }
 
-          const unsubToken = generateUnsubscribeToken(profile.id, "reengagementEmails");
-          const unsubUrl = `${APP_BASE_URL}/api/unsubscribe?token=${unsubToken}&userId=${profile.id}&type=reengagementEmails`;
+          const unsubToken = generateUnsubscribeToken(profile.id, "broadcastEmails");
+          const unsubUrl = `${APP_BASE_URL}/api/unsubscribe?token=${unsubToken}&userId=${profile.id}&type=broadcastEmails`;
           const { subject: emailSubject, html, text } = buildBroadcastEmail(subject, body, unsubUrl);
 
           const { error: sendError } = await resend.emails.send({
@@ -309,13 +325,55 @@ export const sendBroadcast = inngest.createFunction(
 );
 ```
 
-### Notification preferences — reengagementEmails is the "non-critical" opt-out
+### Notification preferences — broadcastEmails is a dedicated opt-out (Option B)
 
-The `profiles.notification_preferences` JSONB defaults to `{"briefingEmails": true, "reengagementEmails": true}` (migration 007). The unsubscribe route accepts `type=reengagementEmails`. **Broadcast uses `reengagementEmails` as the filter** — this is consistent with "non-critical emails" semantics and avoids introducing a new preference type in this story.
+Story 7.3 introduces a **new `broadcastEmails` preference type** to allow granular control: users can silence re-engagement nudges without losing platform announcements, and vice versa.
 
-Filter: `.filter("notification_preferences->reengagementEmails", "eq", true)` — only send to users who have this set to `true`. Since it defaults to `true`, users who haven't explicitly opted out are included.
+**Migration 015** (Task 0):
+- Updates the `notification_preferences` column default to include `"broadcastEmails": true`
+- Backfills existing rows so no existing user is unexpectedly opted out
+- After migration, all three preferences are first-class: `briefingEmails`, `reengagementEmails`, `broadcastEmails`
 
-Unsubscribe link in broadcast email: `type=reengagementEmails` — clicking it sets their `reengagementEmails: false` via the existing unsubscribe route.
+**Filter in sendBroadcast**: `.filter("notification_preferences->broadcastEmails", "eq", true)`
+
+**Unsubscribe link in broadcast email**: `type=broadcastEmails` — clicking sets `broadcastEmails: false` via the unsubscribe route.
+
+**Files touched by Task 0:**
+
+1. `lib/validation/notificationPreferences.ts` — current content:
+```ts
+export const NotificationPreferencesSchema = z
+  .object({
+    briefingEmails: z.boolean().optional(),
+    reengagementEmails: z.boolean().optional(),
+  })
+  .refine(
+    (v) => v.briefingEmails !== undefined || v.reengagementEmails !== undefined,
+    { message: "At least one preference key must be provided." }
+  );
+```
+Add `broadcastEmails: z.boolean().optional()` to the `.object({...})` block AND update the `.refine()` condition to also accept `broadcastEmails !== undefined`.
+
+2. `app/api/unsubscribe/route.ts` — current VALID_TYPES:
+```ts
+const VALID_TYPES = ["briefingEmails", "reengagementEmails"] as const;
+```
+Add `"broadcastEmails"`:
+```ts
+const VALID_TYPES = ["briefingEmails", "reengagementEmails", "broadcastEmails"] as const;
+```
+
+3. `app/(app)/settings/page.tsx` — current `NotificationPreferences` interface has `briefingEmails` and `reengagementEmails`. Add `broadcastEmails: boolean` to the interface and `DEFAULTS`, add a third `ToggleRow`:
+```tsx
+<ToggleRow
+  id="toggle-broadcast"
+  label="Platform announcements"
+  description="Important updates about LifePilot — features, maintenance, and security notices"
+  checked={prefs.broadcastEmails}
+  onChange={(v) => handleToggle("broadcastEmails", v)}
+/>
+```
+Also add a third `<SkeletonToggleRow />` in the loading branch (currently renders two).
 
 ### CoachVoiceLine component — already exists
 

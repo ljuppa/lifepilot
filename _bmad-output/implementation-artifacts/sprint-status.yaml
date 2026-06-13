@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-15
-last_updated: 2026-06-13 # Stories 7.1 and 7.2 done
+last_updated: 2026-06-13 # Stories 7.1 and 7.2 done; 7.3 ready-for-dev
 project: LifePilot
 project_key: NOKEY
 tracking_system: file-system
@@ -96,7 +96,7 @@ development_status:
   epic-5-retrospective: optional
 
   # ── Epic 6: Privacy, Data Control & Compliance ───────────────────────────
-  epic-6: in-progress
+  epic-6: done
   6-1-personal-data-export: done
   6-2-data-summary-and-account-deletion: done
   6-3-automated-data-retention: done
@@ -106,5 +106,5 @@ development_status:
   epic-7: in-progress
   7-1-operator-metrics-dashboard: done
   7-2-per-user-email-delivery-lookup: done
-  7-3-system-wide-broadcast: backlog
+  7-3-system-wide-broadcast: ready-for-dev
   epic-7-retrospective: optional

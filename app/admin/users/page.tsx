@@ -1,3 +1,4 @@
+import { createClient } from "@/utils/supabase/server";
 import { getAdminUserData } from "@/lib/admin/getUserData";
 import type { AdminUserData } from "@/lib/admin/getUserData";
 
@@ -81,7 +82,10 @@ function UserResults({ data }: { data: AdminUserData }) {
               <tbody>
                 {data.reengagementNotifications.map((n, i) => (
                   <tr key={i} className="border-t">
-                    <td className="px-4 py-2 tabular-nums">{new Date(n.sent_at).toLocaleString()}</td>
+                    {/* P6 patch: fixed locale prevents server/client hydration mismatch */}
+                    <td className="px-4 py-2 tabular-nums">
+                      {new Date(n.sent_at).toLocaleString("en-US", { timeZone: "UTC" })}
+                    </td>
                     <td className="px-4 py-2">
                       <StatusBadge status={n.email_status} />
                     </td>
@@ -100,9 +104,13 @@ export default async function AdminUsersPage({ searchParams }: Props) {
   const params = await searchParams;
   const userId = params.userId?.trim();
 
+  // P3 patch: get admin user ID so getAdminUserData can write the audit log
+  const supabase = await createClient();
+  const { data: { user: adminUser } } = await supabase.auth.getUser();
+
   let result: Awaited<ReturnType<typeof getAdminUserData>> | null = null;
-  if (userId) {
-    result = await getAdminUserData(userId);
+  if (userId && adminUser) {
+    result = await getAdminUserData(userId, adminUser.id);
   }
 
   return (

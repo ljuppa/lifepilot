@@ -21,6 +21,17 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // P5 patch: validate UUID before admin role DB query (AC2: no DB query for invalid input)
+  const { searchParams } = new URL(req.url);
+  const parsed = AdminUserLookupSchema.safeParse({ userId: searchParams.get("userId") });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input" } },
+      { status: 400 }
+    );
+  }
+  const { userId } = parsed.data;
+
   const adminClient = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     serviceRoleKey
@@ -47,18 +58,16 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { searchParams } = new URL(req.url);
-  const parsed = AdminUserLookupSchema.safeParse({ userId: searchParams.get("userId") });
-  if (!parsed.success) {
+  // P4 patch: distinguish auth service errors from genuine "user not found"
+  const { data: authUser, error: authUserError } = await adminClient.auth.admin.getUserById(userId);
+  if (authUserError) {
+    console.error(JSON.stringify({ event: "admin_user_lookup_auth_error", message: authUserError.message }));
     return NextResponse.json(
-      { error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input" } },
-      { status: 400 }
+      { error: { code: "AUTH_ERROR", message: "Failed to fetch user from Auth service" } },
+      { status: 502 }
     );
   }
-  const { userId } = parsed.data;
-
-  const { data: authUser, error: authUserError } = await adminClient.auth.admin.getUserById(userId);
-  if (authUserError || !authUser?.user) {
+  if (!authUser?.user) {
     return NextResponse.json(
       { error: { code: "NOT_FOUND", message: "User not found" } },
       { status: 404 }
@@ -85,8 +94,14 @@ export async function GET(req: NextRequest) {
       .maybeSingle(),
   ]);
 
-  if (briefingsResult.error) {
-    console.error(JSON.stringify({ event: "admin_user_lookup_error", message: briefingsResult.error.message }));
+  // P1 patch: check all three query errors, not just briefingsResult
+  if (briefingsResult.error || reengagementResult.error || profileResult.error) {
+    const errMsg =
+      briefingsResult.error?.message ??
+      reengagementResult.error?.message ??
+      profileResult.error?.message ??
+      "Unknown DB error";
+    console.error(JSON.stringify({ event: "admin_user_lookup_error", message: errMsg }));
     return NextResponse.json(
       { error: { code: "DB_ERROR", message: "Failed to fetch user data" } },
       { status: 500 }
@@ -98,6 +113,9 @@ export async function GET(req: NextRequest) {
     .insert({ user_id: user.id, event_type: "admin_user_lookup", metadata: { target_user_id: userId } })
     .then(({ error }: { error: { code: string } | null }) => {
       if (error) console.error(JSON.stringify({ event: "audit_log_error", code: error.code }));
+    })
+    .catch((err: Error) => {
+      console.error(JSON.stringify({ event: "audit_log_error", message: err.message }));
     });
 
   const accountStatus = authUser.user.email_confirmed_at ? "verified" : "unverified";

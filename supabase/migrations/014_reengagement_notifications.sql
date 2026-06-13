@@ -11,4 +11,5 @@ create index if not exists idx_reengagement_notifications_user_id_sent_at
 
 alter table public.reengagement_notifications enable row level security;
 
-grant select on public.reengagement_notifications to service_role;
+-- P2 patch: grant all DML operations so checkInactivity.ts and other server code can write rows
+grant select, insert, update, delete on public.reengagement_notifications to service_role;

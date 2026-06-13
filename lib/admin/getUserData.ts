@@ -20,9 +20,12 @@ export type AdminUserData = {
 
 export type AdminUserDataResult =
   | { ok: true; data: AdminUserData }
-  | { ok: false; code: "CONFIG_ERROR" | "VALIDATION_ERROR" | "NOT_FOUND" | "DB_ERROR"; message: string };
+  | { ok: false; code: "CONFIG_ERROR" | "VALIDATION_ERROR" | "NOT_FOUND" | "DB_ERROR" | "AUTH_ERROR"; message: string };
 
-export async function getAdminUserData(userId: string): Promise<AdminUserDataResult> {
+export async function getAdminUserData(
+  userId: string,
+  adminUserId?: string
+): Promise<AdminUserDataResult> {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) {
     return { ok: false, code: "CONFIG_ERROR", message: "Server configuration error" };
@@ -38,8 +41,12 @@ export async function getAdminUserData(userId: string): Promise<AdminUserDataRes
     serviceRoleKey
   );
 
+  // P4 patch: distinguish auth API errors from genuine "user not found"
   const { data: authUser, error: authUserError } = await adminClient.auth.admin.getUserById(userId);
-  if (authUserError || !authUser?.user) {
+  if (authUserError) {
+    return { ok: false, code: "AUTH_ERROR", message: "Failed to fetch user from Auth service" };
+  }
+  if (!authUser?.user) {
     return { ok: false, code: "NOT_FOUND", message: "User not found" };
   }
 
@@ -63,8 +70,27 @@ export async function getAdminUserData(userId: string): Promise<AdminUserDataRes
       .maybeSingle(),
   ]);
 
-  if (briefingsResult.error) {
-    return { ok: false, code: "DB_ERROR", message: "Failed to fetch user data" };
+  // P1 patch: check all three query errors, not just briefingsResult
+  if (briefingsResult.error || reengagementResult.error || profileResult.error) {
+    const errMsg =
+      briefingsResult.error?.message ??
+      reengagementResult.error?.message ??
+      profileResult.error?.message ??
+      "Unknown DB error";
+    return { ok: false, code: "DB_ERROR", message: `Failed to fetch user data: ${errMsg}` };
+  }
+
+  // P3 patch: write audit log when adminUserId is provided (UI path)
+  if (adminUserId) {
+    adminClient
+      .from("audit_logs")
+      .insert({ user_id: adminUserId, event_type: "admin_user_lookup", metadata: { target_user_id: userId } })
+      .then(({ error }: { error: { code: string } | null }) => {
+        if (error) console.error(JSON.stringify({ event: "audit_log_error", code: error.code }));
+      })
+      .catch((err: Error) => {
+        console.error(JSON.stringify({ event: "audit_log_error", message: err.message }));
+      });
   }
 
   const accountStatus = authUser.user.email_confirmed_at ? "verified" : "unverified";

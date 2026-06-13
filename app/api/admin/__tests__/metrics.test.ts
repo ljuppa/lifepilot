@@ -64,7 +64,6 @@ describe("GET /api/admin/metrics", () => {
     const totalBriefings = overrides.totalBriefings ?? 5;
     const deliveredBriefings = overrides.deliveredBriefings ?? 4;
 
-    // RPC mock for DAU
     mockAdminRpc.mockResolvedValue({ data: dau, error: null });
 
     let callIndex = 0;
@@ -73,7 +72,6 @@ describe("GET /api/admin/metrics", () => {
       const idx = callIndex;
 
       if (idx === 1) {
-        // profiles role check: .select("role").eq(id, userId).single()
         const single = vi.fn().mockResolvedValue({
           data: role ? { role } : null,
           error: null,
@@ -83,18 +81,15 @@ describe("GET /api/admin/metrics", () => {
       }
 
       if (idx === 2) {
-        // profiles total: .select("*", {count,head}) → Promise directly
         return { select: vi.fn().mockResolvedValue({ count: totalUsers, error: null }) };
       }
 
       if (idx === 3) {
-        // briefings total today: .select(...).eq("briefing_date", ...) → Promise
         const eq = vi.fn().mockResolvedValue({ count: totalBriefings, error: null });
         return { select: vi.fn().mockReturnValue({ eq }) };
       }
 
       if (idx === 4) {
-        // briefings delivered: .select(...).eq("briefing_date", ...).eq("email_status", ...) → Promise
         const eq2 = vi.fn().mockResolvedValue({ count: deliveredBriefings, error: null });
         const eq1 = vi.fn().mockReturnValue({ eq: eq2 });
         return { select: vi.fn().mockReturnValue({ eq: eq1 }) };

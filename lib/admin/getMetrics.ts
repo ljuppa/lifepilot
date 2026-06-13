@@ -9,9 +9,7 @@ export type AdminMetrics = {
 
 export async function getAdminMetrics(): Promise<AdminMetrics> {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
-  }
+  if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
 
   const adminClient = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +20,6 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayDateStr = todayStart.toISOString().slice(0, 10);
 
-  // DAU via COUNT(DISTINCT) to avoid PostgREST row limit
   const { data: dauResult, error: dauError } = await adminClient.rpc("get_dau", {
     today_start: todayStart.toISOString(),
   });
@@ -55,10 +52,5 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   const checkinRate =
     (totalUsers ?? 0) > 0 ? Math.round((dau / totalUsers!) * 100) : 0;
 
-  return {
-    dau,
-    briefingDeliveryRate,
-    checkinRate,
-    totalUsers: totalUsers ?? 0,
-  };
+  return { dau, briefingDeliveryRate, checkinRate, totalUsers: totalUsers ?? 0 };
 }

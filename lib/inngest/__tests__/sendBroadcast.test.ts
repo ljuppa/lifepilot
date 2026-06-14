@@ -25,10 +25,11 @@ describe("buildBroadcastEmail", () => {
     expect(html).toContain("Line two.");
   });
 
-  it("includes unsubscribe link in html when provided", () => {
+  it("includes unsubscribe link in html when provided (& escaped to &amp; in href)", () => {
     const url = "https://app.example.com/api/unsubscribe?token=abc&userId=123&type=broadcastEmails";
     const { html } = buildBroadcastEmail("Subject", "Body.", url);
-    expect(html).toContain(url);
+    expect(html).toContain("token=abc&amp;userId=123&amp;type=broadcastEmails");
+    expect(html).toContain("Unsubscribe");
   });
 
   it("includes unsubscribe link in text when provided", () => {

@@ -50,6 +50,14 @@ describe("AdminBroadcastSchema", () => {
     }
   });
 
+  it("rejects whitespace-only subject", () => {
+    const result = AdminBroadcastSchema.safeParse({ ...validInput, subject: "   " });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("Subject is required");
+    }
+  });
+
   it("rejects subject over 120 characters", () => {
     const result = AdminBroadcastSchema.safeParse({ ...validInput, subject: "a".repeat(121) });
     expect(result.success).toBe(false);

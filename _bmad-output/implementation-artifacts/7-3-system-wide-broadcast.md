@@ -114,8 +114,8 @@ So that I can communicate important platform updates, new features, or maintenan
 
 ### Review Findings (code review 2026-06-14 — patch verification)
 
-- [ ] [Review][Patch] Unsubscribe href `&` unescaped — P1 fix applied `escapeHtml` to body paragraphs and COMPANY_ADDRESS but missed `unsubscribeUrl` in the `href` attribute; `&userId=` and `&type=` are stripped by strict HTML parsers, making every unsubscribe click return 400 [lib/email/templates/broadcast.ts:29]
-- [ ] [Review][Patch] Subject missing `.trim()` — P4 added `.trim().min(1)` to `body` but `subject` still accepts whitespace-only strings (e.g., `"   "` passes `min(1)`) [lib/validation/admin.ts:10]
+- [x] [Review][Patch] Unsubscribe href `&` unescaped — P1 fix applied `escapeHtml` to body paragraphs and COMPANY_ADDRESS but missed `unsubscribeUrl` in the `href` attribute; `&userId=` and `&type=` are stripped by strict HTML parsers, making every unsubscribe click return 400 [lib/email/templates/broadcast.ts:29]
+- [x] [Review][Patch] Subject missing `.trim()` — P4 added `.trim().min(1)` to `body` but `subject` still accepts whitespace-only strings (e.g., `"   "` passes `min(1)`) [lib/validation/admin.ts:10]
 - [x] [Review][Defer] Role check runs after input validation — AC2 says "admin role verified first" but Zod validation runs before the DB role query; non-admin users receive VALIDATION_ERROR instead of FORBIDDEN — pre-existing, not introduced by patches [app/api/admin/broadcast/route.ts:28-55]
 - [x] [Review][Defer] getUserById called sequentially within each batch step — 100 serial auth API calls per batch; acceptable at current scale — pre-existing tradeoff of batch design
 - [x] [Review][Defer] Inngest step ceiling reached at N=99,801 recipients — 1+⌈N/100⌉+1=1000 at N=99,800; theoretical concern at current scale
@@ -634,3 +634,4 @@ Implemented all 8 tasks (Task 0–7) in a single session on 2026-06-14.
 - Story 7.3 created (ready-for-dev) — 2026-06-13
 - Story 7.3 implementation complete (review) — 2026-06-14: 15 files created/modified, 487 tests passing
 - Addressed code review findings — 2026-06-14: 9 patches applied (HTML injection escaping, audit-log error logging, durable audit step.run, whitespace body validation, skip logging, 401 message, pagination + goals filter + batch sends); 2 deferred; 494 tests passing
+- Addressed patch-verification findings — 2026-06-14: 2 patches applied (unsubscribe href & HTML-escaped, subject .trim()); 3 deferred; 496 tests passing

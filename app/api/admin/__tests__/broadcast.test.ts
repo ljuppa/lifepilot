@@ -136,6 +136,15 @@ describe("POST /api/admin/broadcast", () => {
     expect(mockAdminFrom).not.toHaveBeenCalled();
   });
 
+  it("returns 400 VALIDATION_ERROR for whitespace-only subject without hitting DB", async () => {
+    const POST = await getHandler();
+    const res = await POST(makeRequest({ subject: "   ", body: "World" }));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe("VALIDATION_ERROR");
+    expect(mockAdminFrom).not.toHaveBeenCalled();
+  });
+
   it("returns 400 VALIDATION_ERROR for subject over 120 chars without hitting DB (P5)", async () => {
     const POST = await getHandler();
     const res = await POST(makeRequest({ subject: "a".repeat(121), body: "World" }));

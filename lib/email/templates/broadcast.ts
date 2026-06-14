@@ -25,7 +25,7 @@ export function buildBroadcastEmail(
     .join("\n  ");
 
   const unsubscribeHtml = unsubscribeUrl
-    ? `<p style="font-size:12px;color:#888;margin:8px 0 0;">Don't want these emails? <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe</a></p>`
+    ? `<p style="font-size:12px;color:#888;margin:8px 0 0;">Don't want these emails? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#888;">Unsubscribe</a></p>`
     : "";
   const unsubscribeText = unsubscribeUrl ? `\nTo unsubscribe: ${unsubscribeUrl}` : "";
 

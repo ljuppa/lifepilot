@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-15
-last_updated: 2026-06-14 # Story 7.3 done
+last_updated: 2026-06-14 # Epic 7 retrospective done — Phase 1 complete
 project: LifePilot
 project_key: NOKEY
 tracking_system: file-system
@@ -103,8 +103,8 @@ development_status:
   epic-6-retrospective: optional
 
   # ── Epic 7: Administration & Operations ──────────────────────────────────
-  epic-7: in-progress
+  epic-7: done
   7-1-operator-metrics-dashboard: done
   7-2-per-user-email-delivery-lookup: done
   7-3-system-wide-broadcast: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done

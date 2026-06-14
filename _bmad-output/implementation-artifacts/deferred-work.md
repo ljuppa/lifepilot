@@ -33,3 +33,8 @@
 - Dialog component missing `aria-labelledby` pointing at DialogTitle — `div[role="dialog"]` has no accessible name; pre-existing pattern in the custom dialog component; fix when the component library is audited for accessibility
 - Export and delete handlers can execute concurrently — both fetch calls can be in-flight simultaneously (independent `exportStatus`/`deleteStatus` guards); low probability in practice but an Inngest export job can be enqueued for a user mid-deletion; requires dedicated "account locked during deletion" state to fix cleanly
 - Single check-in renders "Jan 2025 – Jan 2025" date range — cosmetic; consider suppressing the range display when oldest === newest
+
+## Deferred from: code review of 7-3-system-wide-broadcast (2026-06-14)
+
+- No CSRF / same-origin enforcement on the broadcast POST (and other mutating admin routes) — relies solely on cookie-based `auth.getUser()`; project-wide concern, fix when a CSRF strategy is adopted across all mutating routes
+- No rate limiting on admin endpoints — a compromised admin session could trigger unlimited platform-wide sends; project-wide pattern, address when API rate limiting is introduced

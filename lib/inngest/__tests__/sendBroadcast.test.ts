@@ -85,11 +85,12 @@ function makeStep() {
 }
 
 function makeAdminClient(opts: {
-  profiles?: object[];
+  profiles?: { id: string }[];
   profilesError?: Error | null;
   userEmail?: string;
   emailConfirmedAt?: string | null;
   getUserByIdError?: boolean;
+  goalUserIds?: string[];
 }) {
   const {
     profiles = [{ id: "uid-1" }],
@@ -97,20 +98,32 @@ function makeAdminClient(opts: {
     userEmail = "user@example.com",
     emailConfirmedAt = "2024-01-01T00:00:00Z",
     getUserByIdError = false,
+    goalUserIds,
   } = opts;
 
+  // Default: all profiles have goals (so they pass the goals-existence filter)
+  const effectiveGoalUserIds = goalUserIds ?? profiles.map((p) => p.id);
+
   const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "goals") {
+      return {
+        select: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({
+          data: effectiveGoalUserIds.map((id: string) => ({ user_id: id })),
+          error: null,
+        }),
+      };
+    }
     if (table === "profiles") {
       return {
         select: vi.fn().mockReturnThis(),
-        filter: vi.fn().mockResolvedValue({ data: profilesError ? null : profiles, error: profilesError }),
+        filter: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({ data: profilesError ? null : profiles, error: profilesError }),
       };
     }
     if (table === "audit_logs") {
       return {
-        insert: vi.fn().mockReturnValue({
-          then: vi.fn().mockReturnValue({ catch: vi.fn() }),
-        }),
+        insert: vi.fn().mockResolvedValue({ error: null }),
       };
     }
     return {};
@@ -166,6 +179,23 @@ describe("sendBroadcast pipeline", () => {
     expect(profilesCalls.length).toBeGreaterThan(0);
   });
 
+  it("queries goals table to filter recipients with at least one goal", async () => {
+    const adminClient = makeAdminClient({});
+    await runSendBroadcast(adminClient, defaultEvent);
+
+    const goalsCalls = vi.mocked(adminClient.from).mock.calls.filter(([t]) => t === "goals");
+    expect(goalsCalls.length).toBeGreaterThan(0);
+  });
+
+  it("excludes profiles whose user has no goals", async () => {
+    // profile uid-1 exists but is not in goalUserIds → filtered out
+    const adminClient = makeAdminClient({ profiles: [{ id: "uid-1" }], goalUserIds: [] });
+    await runSendBroadcast(adminClient, defaultEvent);
+
+    const resend = vi.mocked(getResendClient)();
+    expect(resend.emails.send).not.toHaveBeenCalled();
+  });
+
   it("sends email to confirmed recipient", async () => {
     const adminClient = makeAdminClient({ profiles: [{ id: "uid-1" }] });
     await runSendBroadcast(adminClient, defaultEvent);
@@ -182,12 +212,32 @@ describe("sendBroadcast pipeline", () => {
     expect(resend.emails.send).not.toHaveBeenCalled();
   });
 
+  it("logs skip when recipient has no email", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const adminClient = makeAdminClient({ userEmail: "", emailConfirmedAt: "2024-01-01" });
+    await runSendBroadcast(adminClient, defaultEvent);
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("broadcast_recipient_skipped")
+    );
+  });
+
   it("skips recipient whose email is not confirmed", async () => {
     const adminClient = makeAdminClient({ emailConfirmedAt: null });
     await runSendBroadcast(adminClient, defaultEvent);
 
     const resend = vi.mocked(getResendClient)();
     expect(resend.emails.send).not.toHaveBeenCalled();
+  });
+
+  it("logs skip when recipient email is not confirmed", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const adminClient = makeAdminClient({ emailConfirmedAt: null });
+    await runSendBroadcast(adminClient, defaultEvent);
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("broadcast_recipient_skipped")
+    );
   });
 
   it("skips recipient when getUserById throws", async () => {
@@ -216,7 +266,7 @@ describe("sendBroadcast pipeline", () => {
     expect(callArg.html).toContain("type=broadcastEmails");
   });
 
-  it("returns recipientCount equal to number of opted-in profiles", async () => {
+  it("returns recipientCount equal to number of opted-in profiles with goals", async () => {
     const adminClient = makeAdminClient({ profiles: [{ id: "uid-1" }, { id: "uid-2" }] });
     vi.mocked(createSupabaseClientMock).mockReturnValue(adminClient as never);
 
@@ -238,6 +288,19 @@ describe("sendBroadcast pipeline", () => {
     const result = (await fn({ event: { data: defaultEvent }, step })) as { recipientCount: number };
 
     expect(result.recipientCount).toBe(0);
+  });
+
+  it("writes audit log inside a step.run for durability", async () => {
+    const adminClient = makeAdminClient({});
+    vi.mocked(createSupabaseClientMock).mockReturnValue(adminClient as never);
+
+    const { sendBroadcast } = await import("../functions/sendBroadcast?t=" + Date.now());
+    const step = makeStep();
+    const fn = (sendBroadcast as unknown as { callback: (ctx: { event: { data: typeof defaultEvent }; step: typeof step }) => Promise<unknown> }).callback;
+    await fn({ event: { data: defaultEvent }, step });
+
+    const auditStepCall = step.run.mock.calls.find(([name]) => name === "write-audit-log");
+    expect(auditStepCall).toBeDefined();
   });
 
   it("logs error when Resend send fails", async () => {

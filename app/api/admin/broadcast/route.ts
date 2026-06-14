@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required." } }, { status: 401 });
+    return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Not authenticated" } }, { status: 401 });
   }
 
   let rawBody: unknown;
@@ -68,8 +68,12 @@ export async function POST(request: Request) {
       event_type: "admin_broadcast_queued",
       metadata: { subject },
     })
-    .then(() => {})
-    .catch(() => {});
+    .then(({ error }: { error: { code: string } | null }) => {
+      if (error) console.error(JSON.stringify({ event: "audit_log_error", code: error.code }));
+    })
+    .catch((err: Error) => {
+      console.error(JSON.stringify({ event: "audit_log_error", message: err.message }));
+    });
 
   return NextResponse.json({ data: { message: "Broadcast queued — users will receive it shortly." } });
 }

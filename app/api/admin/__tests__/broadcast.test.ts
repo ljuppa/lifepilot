@@ -154,6 +154,15 @@ describe("POST /api/admin/broadcast", () => {
     expect(mockAdminFrom).not.toHaveBeenCalled();
   });
 
+  it("returns 400 VALIDATION_ERROR for whitespace-only body without hitting DB", async () => {
+    const POST = await getHandler();
+    const res = await POST(makeRequest({ subject: "Hello", body: "   " }));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe("VALIDATION_ERROR");
+    expect(mockAdminFrom).not.toHaveBeenCalled();
+  });
+
   it("returns 400 VALIDATION_ERROR for malformed JSON body without hitting DB", async () => {
     const POST = await getHandler();
     const req = new Request("http://localhost/api/admin/broadcast", {

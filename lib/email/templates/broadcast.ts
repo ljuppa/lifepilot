@@ -1,3 +1,12 @@
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 const COMPANY_ADDRESS =
   process.env.COMPANY_MAILING_ADDRESS ?? "LifePilot, 548 Market St, San Francisco CA 94104";
 
@@ -12,7 +21,7 @@ export function buildBroadcastEmail(
     .filter(Boolean);
 
   const paragraphsHtml = paragraphs
-    .map((p) => `<p style="font-size:15px;line-height:1.7;color:#2D3142;margin:0 0 16px;">${p}</p>`)
+    .map((p) => `<p style="font-size:15px;line-height:1.7;color:#2D3142;margin:0 0 16px;">${escapeHtml(p)}</p>`)
     .join("\n  ");
 
   const unsubscribeHtml = unsubscribeUrl
@@ -27,7 +36,7 @@ export function buildBroadcastEmail(
 <div style="max-width:600px;margin:0 auto;padding:32px 24px;">
   ${paragraphsHtml}
   <hr style="border:none;border-top:1px solid #E5E0D8;margin:24px 0;">
-  <p style="font-size:12px;color:#888;margin:0;">${COMPANY_ADDRESS}</p>
+  <p style="font-size:12px;color:#888;margin:0;">${escapeHtml(COMPANY_ADDRESS)}</p>
   ${unsubscribeHtml}
 </div>
 </body>

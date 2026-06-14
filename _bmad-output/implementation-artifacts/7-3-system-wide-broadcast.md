@@ -1,6 +1,6 @@
 # Story 7.3: System-Wide Broadcast
 
-Status: review
+Status: done
 
 ## Story
 
@@ -100,15 +100,15 @@ So that I can communicate important platform updates, new features, or maintenan
 
 ### Review Findings (code review 2026-06-14)
 
-- [ ] [Review][Decision] Fan-out scale strategy — `find-recipients` has no pagination (Supabase silently caps at 1,000 rows, dropping recipients beyond that); `Promise.all` spawns one `step.run` + `getUserById` + Resend send per opted-in user (Inngest ~1,000-step ceiling; Resend rate limits; no batching/throttling). `broadcastEmails` defaults true, so this fans out over the whole user base — unlike `checkInactivity` whose set is pre-filtered. [lib/inngest/functions/sendBroadcast.ts:22-74]
-- [ ] [Review][Decision] AC3 "complete profiles" filter not implemented — `find-recipients` only filters `broadcastEmails eq true` and re-checks `email_confirmed_at`; there is no profile-completeness predicate. All recipients have a `profiles` row by construction, and the spec's own reference code omitted a completeness filter, so the requirement may already be satisfied — or may need an onboarding-complete check. [lib/inngest/functions/sendBroadcast.ts:22-28]
-- [ ] [Review][Decision] Extra `admin_broadcast_queued` audit row on the request path — `route.ts` writes an `audit_logs` row not specified in AC2/AC5 (spec calls for only the `admin_broadcast_sent` row from the Inngest function). Defensible as a richer audit trail (queued vs sent lifecycle), but it is spec drift. Keep or remove? [app/api/admin/broadcast/route.ts:64-72]
-- [ ] [Review][Patch] HTML injection — escape `subject` + body paragraphs before interpolating into email HTML, using the existing `escapeHtml` from `lib/email/templates/dataExport.ts` [lib/email/templates/broadcast.ts:11-30]
-- [ ] [Review][Patch] Audit-log errors silently swallowed — match the established `.then(({error}) => …).catch(…)` logging pattern from `app/api/admin/users/route.ts:111-119` [app/api/admin/broadcast/route.ts:64-72, lib/inngest/functions/sendBroadcast.ts:76-80]
-- [ ] [Review][Patch] AC5 audit insert not durable — wrap the `sendBroadcast` audit insert in a `step.run` so it is memoized (no double-fire on retry with `retries:3`) and awaited before the function returns [lib/inngest/functions/sendBroadcast.ts:76-80]
-- [ ] [Review][Patch] Whitespace-only body produces a footer-only email — `min(1)` counts whitespace; tighten `AdminBroadcastSchema.body` with `.trim().min(1)` (and/or guard empty paragraphs in the template) [lib/validation/admin.ts:12]
-- [ ] [Review][Patch] Skipped recipients are invisible — add a structured log when a recipient is skipped for missing email / unconfirmed account, matching `checkInactivity`'s `NO_EMAIL` log [lib/inngest/functions/sendBroadcast.ts:45-47]
-- [ ] [Review][Patch] 401 message inconsistency — use `"Not authenticated"` to match every other route (`app/api/notifications/route.ts:13`) instead of `"Authentication required."` [app/api/admin/broadcast/route.ts:13]
+- [x] [Review][Decision] Fan-out scale strategy — `find-recipients` has no pagination (Supabase silently caps at 1,000 rows, dropping recipients beyond that); `Promise.all` spawns one `step.run` + `getUserById` + Resend send per opted-in user (Inngest ~1,000-step ceiling; Resend rate limits; no batching/throttling). `broadcastEmails` defaults true, so this fans out over the whole user base — unlike `checkInactivity` whose set is pre-filtered. [lib/inngest/functions/sendBroadcast.ts:22-74]
+- [x] [Review][Decision] AC3 "complete profiles" filter not implemented — `find-recipients` only filters `broadcastEmails eq true` and re-checks `email_confirmed_at`; there is no profile-completeness predicate. All recipients have a `profiles` row by construction, and the spec's own reference code omitted a completeness filter, so the requirement may already be satisfied — or may need an onboarding-complete check. [lib/inngest/functions/sendBroadcast.ts:22-28]
+- [x] [Review][Decision] Extra `admin_broadcast_queued` audit row on the request path — `route.ts` writes an `audit_logs` row not specified in AC2/AC5 (spec calls for only the `admin_broadcast_sent` row from the Inngest function). Defensible as a richer audit trail (queued vs sent lifecycle), but it is spec drift. Keep or remove? [app/api/admin/broadcast/route.ts:64-72]
+- [x] [Review][Patch] HTML injection — escape `subject` + body paragraphs before interpolating into email HTML, using the existing `escapeHtml` from `lib/email/templates/dataExport.ts` [lib/email/templates/broadcast.ts:11-30]
+- [x] [Review][Patch] Audit-log errors silently swallowed — match the established `.then(({error}) => …).catch(…)` logging pattern from `app/api/admin/users/route.ts:111-119` [app/api/admin/broadcast/route.ts:64-72, lib/inngest/functions/sendBroadcast.ts:76-80]
+- [x] [Review][Patch] AC5 audit insert not durable — wrap the `sendBroadcast` audit insert in a `step.run` so it is memoized (no double-fire on retry with `retries:3`) and awaited before the function returns [lib/inngest/functions/sendBroadcast.ts:76-80]
+- [x] [Review][Patch] Whitespace-only body produces a footer-only email — `min(1)` counts whitespace; tighten `AdminBroadcastSchema.body` with `.trim().min(1)` (and/or guard empty paragraphs in the template) [lib/validation/admin.ts:12]
+- [x] [Review][Patch] Skipped recipients are invisible — add a structured log when a recipient is skipped for missing email / unconfirmed account, matching `checkInactivity`'s `NO_EMAIL` log [lib/inngest/functions/sendBroadcast.ts:45-47]
+- [x] [Review][Patch] 401 message inconsistency — use `"Not authenticated"` to match every other route (`app/api/notifications/route.ts:13`) instead of `"Authentication required."` [app/api/admin/broadcast/route.ts:13]
 - [x] [Review][Defer] No CSRF / same-origin enforcement on mutating admin POSTs [app/api/admin/broadcast/route.ts] — deferred, pre-existing (project-wide pattern)
 - [x] [Review][Defer] No rate limiting on admin endpoints [app/api/admin/broadcast/route.ts] — deferred, pre-existing (project-wide pattern)
 
@@ -625,3 +625,4 @@ Implemented all 8 tasks (Task 0–7) in a single session on 2026-06-14.
 ### Change Log
 - Story 7.3 created (ready-for-dev) — 2026-06-13
 - Story 7.3 implementation complete (review) — 2026-06-14: 15 files created/modified, 487 tests passing
+- Addressed code review findings — 2026-06-14: 9 patches applied (HTML injection escaping, audit-log error logging, durable audit step.run, whitespace body validation, skip logging, 401 message, pagination + goals filter + batch sends); 2 deferred; 494 tests passing

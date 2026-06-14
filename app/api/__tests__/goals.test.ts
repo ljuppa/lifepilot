@@ -119,6 +119,40 @@ describe("POST /api/goals", () => {
     expect(res.status).toBe(201);
     expect((await res.json()).data.domain).toBe("health");
   });
+
+  it("accepts target_value and creates goal with it", async () => {
+    const newGoal = { id: "g2", domain: "health", title: "Lose weight", target_value: 70, status: "active" };
+    vi.mocked(createClient).mockResolvedValue(
+      mockAuth(
+        vi.fn()
+          .mockReturnValueOnce(makeChain({ count: 0, error: null }))
+          .mockReturnValueOnce(makeChain({ data: newGoal, error: null }))
+      ) as never
+    );
+    const res = await POST(postReq({ domain: "health", title: "Lose weight", target_value: 70 }));
+    expect(res.status).toBe(201);
+    expect((await res.json()).data.target_value).toBe(70);
+  });
+
+  it("returns 422 for negative target_value", async () => {
+    vi.mocked(createClient).mockResolvedValue(mockAuth() as never);
+    const res = await POST(postReq({ domain: "finance", title: "Save more", target_value: -100 }));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("creates goal without target_value when it is omitted", async () => {
+    const newGoal = { id: "g3", domain: "wellness", title: "Sleep better", target_value: null, status: "active" };
+    vi.mocked(createClient).mockResolvedValue(
+      mockAuth(
+        vi.fn()
+          .mockReturnValueOnce(makeChain({ count: 1, error: null }))
+          .mockReturnValueOnce(makeChain({ data: newGoal, error: null }))
+      ) as never
+    );
+    const res = await POST(postReq({ domain: "wellness", title: "Sleep better" }));
+    expect(res.status).toBe(201);
+  });
 });
 
 // ── DELETE /api/goals/[id] ─────────────────────────────────────────────────────

@@ -843,3 +843,108 @@ cd lifepilot
 npx shadcn@latest init
 ```
 Then Epic 1, Story 1: project initialisation, environment scaffolding, and CI pipeline setup.
+
+---
+
+## Phase 1 Implementation Additions (2026-06-14)
+
+_Patterns and structures discovered during Phase 1 implementation that extend the original architecture decisions. All AI agents must follow these rules._
+
+### Admin Service Layer — `lib/admin/`
+
+Admin operations go through shared service functions, not inline in route handlers:
+
+```
+lib/admin/
+  getMetrics.ts    ← DAU, delivery rate, check-in rate, total users
+  getUserData.ts   ← per-user email delivery lookup with parallel queries + audit log
+```
+
+**Rule:** Every admin operation delegates to a shared service function. Route handlers handle HTTP concerns only (auth, validation, error responses). Service functions handle DB queries and business logic.
+
+### Admin Route 4-Step Guard Pattern
+
+All `/api/admin/*` routes follow this exact sequence — no exceptions, no reordering:
+
+1. **Env var guard** — `SUPABASE_SERVICE_ROLE_KEY` present (no DB hit)
+2. **Session auth** — `supabase.auth.getUser()` via JWT (no DB hit)
+3. **Input validation** — Zod schema parse (no DB hit)
+4. **Role DB check** — `profiles.role === 'admin'` (first DB hit)
+5. **Business logic**
+
+Validation before the role check (step 3 before step 4) is deliberate: invalid input should never hit the database. This was the P5 lesson from Story 7.2, applied consistently from 7.2 onward.
+
+### Email Template Layer — `lib/email/templates/`
+
+```
+lib/email/templates/
+  briefing.ts      ← buildBriefingEmail(data): { subject, html, text }
+  dataExport.ts    ← buildDataExportEmail(downloadUrl): { subject, html, text }
+  broadcast.ts     ← buildBroadcastEmail(subject, body, unsubscribeUrl?): { subject, html, text }
+```
+
+**Rule:** Every template function returns `{ subject, html, text }`. Plain text version always included for email client fallback.
+
+**Critical:** Every value interpolated into HTML must be escaped. Both `dataExport.ts` and `broadcast.ts` define a local `escapeHtml()` function. Phase 2 task: extract to `lib/utils/html.ts`.
+
+**CAN-SPAM compliance required** in all notification emails: physical mailing address + one-click unsubscribe link. Unsubscribe URL `href` attributes must also be escaped (raw `&` in query params breaks email client HTML parsers).
+
+### Rate Limiting Utility — `lib/rate-limit.ts`
+
+```ts
+checkRateLimit(key: string, maxRequests: number): Promise<{ ok: boolean; retryAfterSeconds: number }>
+```
+
+Upstash sliding window implementation with in-memory fallback for local dev / CI (no Upstash env vars required). Currently applied to auth routes only. Phase 2: extend to admin endpoints.
+
+### Inngest Scale Constraints
+
+- **Supabase PostgREST default cap:** 1,000 rows per query. Use `range()` pagination with `PAGE_SIZE=1000` for any query over user tables.
+- **Inngest step ceiling:** ~1,000 steps per function run. For fan-out over users, use `BATCH_SIZE=100` batch strategy: 1 find-recipients step + ⌈N/100⌉ batch steps + 1 audit step = 1,000 at N=99,800 recipients.
+- **`get_dau` Postgres RPC** (migration 013) bypasses the PostgREST cap for aggregate DAU count.
+
+### Audit Log Pattern
+
+Fire-and-forget with error logging:
+
+```ts
+adminClient.from("audit_logs").insert({ user_id, event_type, metadata })
+  .then(({ error }) => { if (error) console.error(JSON.stringify({ event: "audit_log_error", code: error.code })); })
+  .catch((err) => { console.error(JSON.stringify({ event: "audit_log_error", message: err.message })); });
+```
+
+For Inngest functions with `retries: 3`, wrap in `step.run("write-audit-log", ...)` to prevent duplicate inserts on retry.
+
+### Middleware File Name
+
+The middleware is at `proxy.ts` in the project root (not `middleware.ts`). This is the actual Next.js middleware entry point. It protects:
+
+```ts
+const PROTECTED_ROUTES = ["/dashboard", "/onboarding", "/checkin", "/goals", "/briefing", "/profile", "/settings", "/data", "/admin"];
+```
+
+### Updated Directory Structure Additions
+
+```
+lib/
+  admin/                 ← NEW (Phase 1) — admin service functions
+  rate-limit.ts          ← NEW (Phase 1) — Upstash rate limit utility
+  email/
+    templates/           ← NEW (Phase 1) — email template functions
+app/
+  admin/                 ← NEW (Phase 1, Epic 7) — operator admin pages
+_bmad-output/
+  implementation-artifacts/
+    deferred-work.md     ← NEW — accumulated deferred items backlog (18 items as of Phase 1)
+```
+
+### Phase 2 Deferred Architecture Items
+
+| Item | Priority | Notes |
+|---|---|---|
+| CSRF protection on mutating routes | High — before user testing | No same-origin enforcement on any POST/PATCH/DELETE |
+| Admin endpoint rate limiting | High | Apply `checkRateLimit` to broadcast endpoint (3/hour) |
+| `escapeHtml` extraction to `lib/utils/html.ts` | Medium | Currently duplicated in 2 template files |
+| OpenAPI spec generation | Medium | Required for iOS client (already in original Phase 2 plan) |
+| `target_value` on goals form | High — before user testing | Progress bars show "No data yet" for all users |
+| Playwright E2E test suite | Medium | Already in original Phase 2 plan |

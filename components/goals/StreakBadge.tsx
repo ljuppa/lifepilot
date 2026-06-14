@@ -17,9 +17,9 @@ export function StreakBadge({ streakDays }: StreakBadgeProps) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
-    setPulse(true);
-    const t = setTimeout(() => setPulse(false), 1500);
-    return () => clearTimeout(t);
+    const tOn = setTimeout(() => setPulse(true), 0);
+    const tOff = setTimeout(() => setPulse(false), 1500);
+    return () => { clearTimeout(tOn); clearTimeout(tOff); };
   }, [streakDays]);
 
   if (streakDays === 0) {

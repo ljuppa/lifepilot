@@ -63,6 +63,9 @@ export default function OnboardingPage() {
   const [goalTitles, setGoalTitles] = useState<Record<Domain, string>>(
     goals.reduce((acc, g) => ({ ...acc, [g.domain]: g.title }), {} as Record<Domain, string>)
   );
+  const [goalTargets, setGoalTargets] = useState<Record<Domain, string>>(
+    goals.reduce((acc, g) => ({ ...acc, [g.domain]: g.target_value?.toString() ?? "" }), {} as Record<Domain, string>)
+  );
   const [step3Error, setStep3Error] = useState("");
 
   // Step 4
@@ -101,7 +104,10 @@ export default function OnboardingPage() {
       return;
     }
     setStep3Error("");
-    setGoals(selectedDomains.map((d) => ({ domain: d, title: goalTitles[d].trim() })));
+    setGoals(selectedDomains.map((d) => {
+      const raw = parseFloat(goalTargets[d] ?? "");
+      return { domain: d, title: goalTitles[d].trim(), ...(raw > 0 ? { target_value: raw } : {}) };
+    }));
     setStep(4);
   }
 
@@ -269,20 +275,41 @@ export default function OnboardingPage() {
             </div>
 
             {selectedDomains.map((domain) => (
-              <div key={domain} className="space-y-1.5">
-                <Label htmlFor={`goal-${domain}`}>
-                  {domain.charAt(0).toUpperCase() + domain.slice(1)} goal
-                </Label>
-                <Input
-                  id={`goal-${domain}`}
-                  placeholder={
-                    domain === "health" ? "e.g. Lose 5kg by summer"
-                    : domain === "finance" ? "e.g. Save $500/month"
-                    : "e.g. Sleep 8 hours a night"
-                  }
-                  value={goalTitles[domain] ?? ""}
-                  onChange={(e) => setGoalTitles((t) => ({ ...t, [domain]: e.target.value }))}
-                />
+              <div key={domain} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor={`goal-${domain}`}>
+                    {domain.charAt(0).toUpperCase() + domain.slice(1)} goal
+                  </Label>
+                  <Input
+                    id={`goal-${domain}`}
+                    placeholder={
+                      domain === "health" ? "e.g. Lose 5kg by summer"
+                      : domain === "finance" ? "e.g. Save $500/month"
+                      : "e.g. Sleep 8 hours a night"
+                    }
+                    value={goalTitles[domain] ?? ""}
+                    onChange={(e) => setGoalTitles((t) => ({ ...t, [domain]: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor={`target-${domain}`}>
+                    Target{" "}
+                    <span className="text-muted-foreground font-normal">optional</span>
+                  </Label>
+                  <Input
+                    id={`target-${domain}`}
+                    type="number"
+                    min={0.01}
+                    step="any"
+                    placeholder={
+                      domain === "health" ? "e.g. 70 (kg)"
+                      : domain === "finance" ? "e.g. 500 ($)"
+                      : "e.g. 8 (hrs avg)"
+                    }
+                    value={goalTargets[domain] ?? ""}
+                    onChange={(e) => setGoalTargets((t) => ({ ...t, [domain]: e.target.value }))}
+                  />
+                </div>
               </div>
             ))}
 

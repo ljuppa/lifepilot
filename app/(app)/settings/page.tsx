@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 interface NotificationPreferences {
   briefingEmails: boolean;
   reengagementEmails: boolean;
+  broadcastEmails: boolean;
 }
 
-const DEFAULTS: NotificationPreferences = { briefingEmails: true, reengagementEmails: true };
+const DEFAULTS: NotificationPreferences = { briefingEmails: true, reengagementEmails: true, broadcastEmails: true };
 
 function SkeletonToggleRow() {
   return (
@@ -114,6 +115,7 @@ export default function SettingsPage() {
             <>
               <SkeletonToggleRow />
               <SkeletonToggleRow />
+              <SkeletonToggleRow />
             </>
           ) : (
             <>
@@ -130,6 +132,13 @@ export default function SettingsPage() {
                 description="Get a gentle nudge if you haven't checked in for 3 days"
                 checked={prefs.reengagementEmails}
                 onChange={(v) => handleToggle("reengagementEmails", v)}
+              />
+              <ToggleRow
+                id="toggle-broadcast"
+                label="Platform announcements"
+                description="Important updates about LifePilot — features, maintenance, and security notices"
+                checked={prefs.broadcastEmails}
+                onChange={(v) => handleToggle("broadcastEmails", v)}
               />
             </>
           )}

@@ -219,6 +219,10 @@ export default function GoalsPage() {
 
 const GoalTitleSchema = z.object({
   title: z.string().min(1, "Please enter a goal title."),
+  target_value: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(v)),
+    z.number().positive("Target must be a positive number.").optional()
+  ),
 });
 type GoalTitleInput = z.infer<typeof GoalTitleSchema>;
 
@@ -252,7 +256,7 @@ function AddGoalForm({
     const res = await fetch("/api/goals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: data.title, domain: selectedDomain[0] }),
+      body: JSON.stringify({ title: data.title, domain: selectedDomain[0], target_value: data.target_value }),
     });
 
     if (res.ok) {
@@ -293,6 +297,33 @@ function AddGoalForm({
           </p>
         )}
       </div>
+
+      {selectedDomain.length > 0 && (
+        <div className="space-y-1.5">
+          <Label htmlFor="goal-target">
+            Target{" "}
+            <span className="text-muted-foreground font-normal">optional</span>
+          </Label>
+          <Input
+            id="goal-target"
+            type="number"
+            min={0.01}
+            step="any"
+            placeholder={
+              selectedDomain[0] === "health" ? "e.g. 70 (kg)"
+              : selectedDomain[0] === "finance" ? "e.g. 500 ($)"
+              : "e.g. 8 (hrs avg)"
+            }
+            {...register("target_value")}
+            aria-describedby={errors.target_value ? "goal-target-err" : undefined}
+          />
+          {errors.target_value && (
+            <p id="goal-target-err" role="alert" className="text-sm text-destructive">
+              {errors.target_value.message}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isSubmitting}>

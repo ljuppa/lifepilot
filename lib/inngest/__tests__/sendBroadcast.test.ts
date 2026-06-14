@@ -54,6 +54,39 @@ describe("buildBroadcastEmail", () => {
     expect(result).toHaveProperty("html");
     expect(result).toHaveProperty("text");
   });
+
+  // XSS / HTML injection regression tests (round-2 review findings)
+  it("escapes <script> tags in body to prevent HTML injection", () => {
+    const { html } = buildBroadcastEmail("Subject", "<script>alert('xss')</script>");
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("escapes & ampersand in body content", () => {
+    const { html } = buildBroadcastEmail("Subject", "Cats & dogs");
+    expect(html).toContain("Cats &amp; dogs");
+    expect(html).not.toMatch(/Cats & dogs/);
+  });
+
+  it("escapes double quotes in body content", () => {
+    const { html } = buildBroadcastEmail("Subject", 'Say "hello" to everyone');
+    expect(html).toContain("&quot;");
+    expect(html).not.toContain('"hello"');
+  });
+
+  it("does not escape body content in plain text version", () => {
+    const { text } = buildBroadcastEmail("Subject", "<tag>raw content</tag>");
+    expect(text).toContain("<tag>raw content</tag>");
+  });
+
+  it("raw & in unsubscribe href is escaped to &amp; (prevents broken email client parsing)", () => {
+    // Strict HTML parsers strip query params after an unescaped & — this was the round-2 critical bug
+    const url = "https://app.example.com/api/unsubscribe?token=tok&userId=uid&type=broadcastEmails";
+    const { html } = buildBroadcastEmail("Subject", "Body.", url);
+    // href must NOT contain raw & — it would make email clients strip userId and type params
+    expect(html).not.toMatch(/href="[^"]*&(?!amp;)/);
+    expect(html).toContain("&amp;userId=uid&amp;type=broadcastEmails");
+  });
 });
 
 // ── sendBroadcast Inngest function ────────────────────────────────────────────
@@ -318,5 +351,40 @@ describe("sendBroadcast pipeline", () => {
   it("throws when profiles DB query fails", async () => {
     const adminClient = makeAdminClient({ profilesError: new Error("DB error") });
     await expect(runSendBroadcast(adminClient, defaultEvent)).rejects.toThrow("Profiles fetch failed");
+  });
+
+  // Batch fan-out tests — BATCH_SIZE=100 scale boundary
+  it("creates one batch step when recipients <= 100", async () => {
+    const adminClient = makeAdminClient({ profiles: [{ id: "uid-1" }, { id: "uid-2" }] });
+    await runSendBroadcast(adminClient, defaultEvent);
+
+    const batchNames = (step: ReturnType<typeof makeStep>) =>
+      step.run.mock.calls.map(([n]: [string]) => n).filter((n: string) => n.startsWith("send-broadcast-batch-"));
+
+    vi.mocked(createSupabaseClientMock).mockReturnValue(adminClient as never);
+    const { sendBroadcast } = await import("../functions/sendBroadcast?t=" + Date.now());
+    const s = makeStep();
+    const fn = (sendBroadcast as unknown as { callback: (ctx: { event: { data: typeof defaultEvent }; step: typeof s }) => Promise<unknown> }).callback;
+    await fn({ event: { data: defaultEvent }, step: s });
+    expect(batchNames(s)).toHaveLength(1);
+    expect(batchNames(s)[0]).toBe("send-broadcast-batch-0");
+  });
+
+  it("creates two batch steps when recipients span 101–200 (BATCH_SIZE=100 boundary)", async () => {
+    const profiles = Array.from({ length: 150 }, (_, i) => ({ id: `uid-${i}` }));
+    const adminClient = makeAdminClient({ profiles });
+    vi.mocked(createSupabaseClientMock).mockReturnValue(adminClient as never);
+
+    const { sendBroadcast } = await import("../functions/sendBroadcast?t=" + Date.now());
+    const s = makeStep();
+    const fn = (sendBroadcast as unknown as { callback: (ctx: { event: { data: typeof defaultEvent }; step: typeof s }) => Promise<unknown> }).callback;
+    await fn({ event: { data: defaultEvent }, step: s });
+
+    const batchNames = s.run.mock.calls
+      .map(([n]: [string]) => n)
+      .filter((n: string) => n.startsWith("send-broadcast-batch-"));
+    expect(batchNames).toContain("send-broadcast-batch-0");
+    expect(batchNames).toContain("send-broadcast-batch-1");
+    expect(batchNames).not.toContain("send-broadcast-batch-2");
   });
 });

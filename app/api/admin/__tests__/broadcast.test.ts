@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+const mockCheckRateLimit = vi.fn().mockResolvedValue({ ok: true, retryAfterSeconds: 0 });
+
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: mockCheckRateLimit,
+}));
+
 const mockGetUser = vi.fn();
 
 vi.mock("@/utils/supabase/server", () => ({
@@ -89,6 +95,47 @@ describe("POST /api/admin/broadcast", () => {
   afterEach(() => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  });
+
+  it("returns 429 when broadcast rate limit is exceeded", async () => {
+    mockCheckRateLimit.mockResolvedValueOnce({ ok: false, retryAfterSeconds: 300 });
+    const POST = await getHandler();
+    const res = await POST(makeRequest({ subject: "Hello", body: "World" }));
+    expect(res.status).toBe(429);
+    const json = await res.json();
+    expect(json.error.code).toBe("RATE_LIMITED");
+    expect(res.headers.get("Retry-After")).toBe("300");
+  });
+
+  it("returns 403 when Origin header does not match host (CSRF)", async () => {
+    const POST = await getHandler();
+    const req = new Request("http://localhost/api/admin/broadcast", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://evil.example.com",
+        Host: "localhost",
+      },
+      body: JSON.stringify({ subject: "Hello", body: "World" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("FORBIDDEN");
+  });
+
+  it("passes CSRF check when Origin matches host", async () => {
+    const POST = await getHandler();
+    const req = new Request("http://localhost/api/admin/broadcast", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost",
+        Host: "localhost",
+      },
+      body: JSON.stringify({ subject: "Hello", body: "World" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
   });
 
   it("returns 500 when SUPABASE_SERVICE_ROLE_KEY is missing", async () => {

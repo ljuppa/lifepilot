@@ -3,8 +3,26 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { inngest } from "@/lib/inngest/client";
 import { AdminBroadcastSchema } from "@/lib/validation/admin";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  if (origin !== null) {
+    const host = request.headers.get("host") ?? "";
+    let sameOrigin = false;
+    try {
+      sameOrigin = new URL(origin).host === host;
+    } catch {
+      sameOrigin = false;
+    }
+    if (!sameOrigin) {
+      return NextResponse.json(
+        { error: { code: "FORBIDDEN", message: "Cross-origin request rejected." } },
+        { status: 403 }
+      );
+    }
+  }
+
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ error: { code: "CONFIG_ERROR", message: "Server misconfiguration." } }, { status: 500 });
   }
@@ -13,6 +31,14 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Not authenticated" } }, { status: 401 });
+  }
+
+  const { ok, retryAfterSeconds } = await checkRateLimit(`broadcast:${user.id}`, 3);
+  if (!ok) {
+    return NextResponse.json(
+      { error: { code: "RATE_LIMITED", message: "Too many broadcast requests. Please wait before sending another." } },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
+    );
   }
 
   let rawBody: unknown;

@@ -2,7 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { type NextRequest } from "next/server";
 import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe";
 
-const VALID_TYPES = ["briefingEmails", "reengagementEmails"] as const;
+const VALID_TYPES = ["briefingEmails", "reengagementEmails", "broadcastEmails"] as const;
 type ValidType = (typeof VALID_TYPES)[number];
 
 function htmlResponse(body: string, status = 200) {

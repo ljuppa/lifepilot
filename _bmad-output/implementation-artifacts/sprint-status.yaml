@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-15
-last_updated: 2026-06-13 # Stories 7.1 and 7.2 done; 7.3 ready-for-dev
+last_updated: 2026-06-14 # Story 7.3 in-progress
 project: LifePilot
 project_key: NOKEY
 tracking_system: file-system
@@ -106,5 +106,5 @@ development_status:
   epic-7: in-progress
   7-1-operator-metrics-dashboard: done
   7-2-per-user-email-delivery-lookup: done
-  7-3-system-wide-broadcast: ready-for-dev
+  7-3-system-wide-broadcast: review
   epic-7-retrospective: optional

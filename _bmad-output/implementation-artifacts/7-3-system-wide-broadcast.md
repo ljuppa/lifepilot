@@ -112,6 +112,14 @@ So that I can communicate important platform updates, new features, or maintenan
 - [x] [Review][Defer] No CSRF / same-origin enforcement on mutating admin POSTs [app/api/admin/broadcast/route.ts] — deferred, pre-existing (project-wide pattern)
 - [x] [Review][Defer] No rate limiting on admin endpoints [app/api/admin/broadcast/route.ts] — deferred, pre-existing (project-wide pattern)
 
+### Review Findings (code review 2026-06-14 — patch verification)
+
+- [ ] [Review][Patch] Unsubscribe href `&` unescaped — P1 fix applied `escapeHtml` to body paragraphs and COMPANY_ADDRESS but missed `unsubscribeUrl` in the `href` attribute; `&userId=` and `&type=` are stripped by strict HTML parsers, making every unsubscribe click return 400 [lib/email/templates/broadcast.ts:29]
+- [ ] [Review][Patch] Subject missing `.trim()` — P4 added `.trim().min(1)` to `body` but `subject` still accepts whitespace-only strings (e.g., `"   "` passes `min(1)`) [lib/validation/admin.ts:10]
+- [x] [Review][Defer] Role check runs after input validation — AC2 says "admin role verified first" but Zod validation runs before the DB role query; non-admin users receive VALIDATION_ERROR instead of FORBIDDEN — pre-existing, not introduced by patches [app/api/admin/broadcast/route.ts:28-55]
+- [x] [Review][Defer] getUserById called sequentially within each batch step — 100 serial auth API calls per batch; acceptable at current scale — pre-existing tradeoff of batch design
+- [x] [Review][Defer] Inngest step ceiling reached at N=99,801 recipients — 1+⌈N/100⌉+1=1000 at N=99,800; theoretical concern at current scale
+
 
 ## Dev Notes
 
